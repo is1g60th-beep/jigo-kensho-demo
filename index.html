@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>事後検証支援システム（デモ・1ファイル版）</title>
+<style>
+:root{--ink:#1f2328;--muted:#5f6b76;--line:#d0d7de;--bg:#f6f8fa;--accent:#1f4e78;--accent-bg:#e8f0f8;--warn:#9a6700;--warn-bg:#fff8c5;--err:#b42318;--err-bg:#fdecea;--ok:#1a7f37;--input:#fffbe6}
+*{box-sizing:border-box}body{margin:0;font-family:"Meiryo UI","Yu Gothic UI","Hiragino Sans",sans-serif;font-size:15px;color:var(--ink);background:#fff;line-height:1.6}
+header{background:var(--accent);color:#fff;padding:8px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+header a{color:#fff;text-decoration:none;font-size:14px}header .brand{font-weight:bold;margin-right:12px}header .who{margin-left:auto;font-size:13px;opacity:.9}
+header form{display:inline}header button{background:transparent;border:1px solid #fff;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
+.demo{background:#7a4b00;color:#fff;font-size:12px;padding:3px 16px}
+main{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0 12px}h2{font-size:17px;margin:20px 0 8px;border-left:4px solid var(--accent);padding-left:8px}h3{font-size:15px;margin:14px 0 6px}
+table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left;font-size:14px}th{background:var(--bg);font-weight:600}
+.flash{background:var(--accent-bg);border:1px solid #9cc0e0;padding:8px 12px;border-radius:6px;margin:6px 0}
+.err{color:var(--err)}.warn{color:var(--warn)}.ok{color:var(--ok)}.muted{color:var(--muted);font-size:13px}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0;background:#fff}
+.box.err{background:var(--err-bg);border-color:#f5c2c0;color:var(--ink)}.box.warnbox{background:var(--warn-bg);border-color:#e9d58a}
+.q{border-bottom:1px solid var(--line);padding:10px 0}.q.hidden{display:none}.q .qt{font-weight:600}.tag{display:inline-block;font-size:11px;border-radius:10px;padding:0 8px;margin-right:6px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.tag.req{background:var(--err-bg);border-color:#f5c2c0;color:var(--err)}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.opts label{border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;background:#fff;font-size:14px}
+.opts input{margin-right:4px}.opts label:has(input:checked){background:var(--accent-bg);border-color:var(--accent)}
+input[type=text],input[type=date],input[type=time],input[type=number],select,textarea{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--input);max-width:100%}
+textarea{width:100%;min-height:44px}
+.btn{display:inline-block;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:7px 16px;font:inherit;cursor:pointer;text-decoration:none}
+.btn.sub{background:#fff;color:var(--accent);border:1px solid var(--accent)}.btn.danger{background:var(--err)}
+.bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;z-index:5}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 12px;border-bottom:1px solid var(--line)}.tabs a{padding:6px 12px;text-decoration:none;color:var(--accent);border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;font-size:14px}
+.tabs a.on{border-color:var(--line);background:#fff;font-weight:600;margin-bottom:-1px}
+.grid2{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px}
+.pane{max-height:80vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);font-size:14px}
+.item{border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}.item.cd{border-color:#e7a3a0}
+.ref{font-weight:bold;padding:2px 8px;border-radius:6px;background:var(--accent-bg)}
+.pill{display:inline-block;padding:0 8px;border-radius:10px;font-size:12px;background:var(--bg);border:1px solid var(--line)}
+.p-S1{background:#fff8c5}.p-S3,.p-S5,.p-S6{background:#e8f0f8}.p-S7{background:#dafbe1}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}.pane{max-height:none}}
+@media print{header,.demo,.tabs,.bar,.noprint{display:none}main{max-width:none}}
+
+</style>
+</head>
+<body>
+<div id="root"><main><p>読み込み中…</p><noscript>このアプリはJavaScriptを有効にしたブラウザで動きます。</noscript></main></div>
+<script>
+const MASTERS = {"versions": {"QUESTION": "Q-0.1", "CRITERIA": "V-0.2", "CHOICE": "L-0.2"}, "choices": {"L_CASECAT": [["CPA", "心肺停止"], ["TRA", "外傷"], ["STR", "脳卒中疑い"], ["ACS", "胸痛・急性冠症候群疑い"], ["RES", "呼吸困難"], ["CON", "意識障害（その他）"], ["NTR", "不搬送・搬送辞退"], ["OTH", "その他"]], "L_AGE": [["NEO", "新生児（生後28日未満）"], ["INF", "乳幼児（28日以上7歳未満）"], ["JUV", "少年（7歳以上18歳未満）"], ["ADL", "成人（18歳以上65歳未満）"], ["ELD", "高齢者（65歳以上）"], ["UNK", "不明"]], "L_SEX": [["M", "男性"], ["F", "女性"], ["NREC", "記録しない（検証上不要）"], ["UNK", "不明"]], "L_ETIOL": [["END", "内因性"], ["EXT", "外因性"], ["IND", "区分困難"], ["UNK", "不明"]], "L_TARGET": [["ALL", "全数検証対象"], ["CRIT", "抽出基準該当"], ["VOL", "隊・本人の申出"], ["OTH", "その他"]], "L_PROGRESS": [["S1", "活動隊入力中"], ["S2", "活動隊入力完了"], ["S3", "一次検証中"], ["S4", "一次検証確定"], ["S5", "上位検証中"], ["S6", "改善策実施中"], ["S7", "完了"]], "L_YN": [["Y", "はい"], ["N", "いいえ"], ["UNK", "不明"], ["NREC", "記録なし"], ["NA", "該当なし"]], "L_EXIST": [["Y", "あり"], ["N", "なし"], ["UNK", "不明"], ["NC", "確認できなかった"], ["NREC", "記録なし"]], "L_TEXT": [["W", "記述あり（右欄）"], ["NONE", "特になし"], ["UNK", "不明"]], "L_SITE": [["HOME", "住宅（屋内）"], ["BLDG", "住宅以外の屋内"], ["ROAD", "屋外・路上"], ["TRAF", "交通事故現場"], ["PUB", "公共施設・駅等"], ["CARE", "医療・介護施設"], ["OTH", "その他"], ["UNK", "不明"]], "L_JCS": [["J0", "清明（JCS 0）"], ["J1", "1桁"], ["J2", "2桁"], ["J3", "3桁（100～200）"], ["J300", "JCS 300"], ["NE", "評価できず"], ["NREC", "記録なし"]], "L_RESP": [["NORM", "正常"], ["ABN", "異常あり"], ["NONE", "なし（死戦期呼吸を含む）"], ["NC", "確認できなかった"], ["NREC", "記録なし"]], "L_PULSE": [["NORM", "触知・異常なし"], ["ABN", "触知・異常あり"], ["NONE", "触知せず"], ["NC", "確認できなかった"], ["NREC", "記録なし"]], "L_CHANGE": [["NONE", "変化なし"], ["WORSE", "悪化"], ["IMPR", "改善"], ["FLUC", "変動"], ["UNK", "不明"]], "L_WITNESS": [["FAM", "家族・関係者が目撃"], ["EMS", "救急隊が目撃"], ["NONE", "目撃なし"], ["UNK", "不明"]], "L_RHYTHM": [["VF", "VF"], ["VT", "無脈性VT"], ["PEA", "PEA"], ["ASY", "心静止"], ["NC", "確認できなかった"], ["NREC", "記録なし"]], "L_MECH": [["TRAF", "交通事故"], ["FALL", "墜落・転落"], ["TUMB", "転倒"], ["CRUSH", "挟まれ・下敷き"], ["PEN", "刺創・切創"], ["OTH", "その他"], ["UNK", "不明"]], "L_ONSET": [["CONF", "確認できた"], ["EST", "推定できた"], ["NC", "確認できなかった"], ["NA", "該当なし"]], "L_STRS": [["POS", "陽性"], ["NEG", "陰性"], ["NE", "評価できず"]], "L_NTR": [["SELF", "本人の搬送辞退"], ["FAM", "家族等の搬送辞退"], ["DEAD", "明らかな死亡"], ["OWN", "自力受診等の他手段"], ["MILD", "受診不要の申出（軽症）"], ["OTH", "その他"]], "L_URG": [["RED", "緊急"], ["YEL", "準緊急"], ["GRN", "低緊急"], ["HES", "判断に迷った"], ["NJ", "判断しなかった"]], "L_TRIG": [["OBS", "新たな観察所見"], ["CHG", "状態変化"], ["INFO", "関係者からの情報"], ["MC", "MC医師の助言"], ["CREW", "隊員の指摘"], ["OTH", "その他"]], "L_INQ": [["1", "1回"], ["2_3", "2～3回"], ["4P", "4回以上"], ["0", "照会なし"], ["UNK", "不明"]], "L_MCPUR": [["ORD", "特定行為の指示"], ["ADV", "処置の助言"], ["DEST", "搬送先選定の助言"], ["NTR", "不搬送の相談"], ["OTH", "その他"]], "L_IMPACT": [["NONE", "影響なし"], ["SOME", "やや影響"], ["MAJ", "大きく影響"], ["UNK", "不明"]], "L_AWARE": [["PRE", "接触前から把握"], ["SCENE", "現場で把握"], ["TRANS", "搬送中に把握"], ["NOTA", "把握していなかった"], ["TRIED", "確認を試みたができなかった"], ["NOCHK", "確認していない"], ["NA", "該当なし"]], "L_SOURCE": [["DISP", "通報内容・指令"], ["PT", "傷病者本人"], ["FAM", "家族・関係者"], ["WIT", "目撃者・通行人"], ["OBS", "隊員の観察"], ["DEV", "資器材の測定値"], ["DOC", "お薬手帳・診察券等"], ["HOSP", "医療機関・MC"], ["OTH", "その他"], ["UNK", "不明"]], "L_REFLECT": [["YES", "反映した"], ["NOR", "反映しなかった（理由あり）"], ["NO", "反映しなかった"], ["NOEFF", "方針に関係しなかった"], ["UNK", "不明"]], "L_TCERT": [["REC", "記録・機器記録"], ["MEM", "隊員の記憶"], ["EST", "推定"], ["UNK", "不明"]], "L_EVENT": [["CALL", "覚知"], ["DISP", "出動"], ["ARR", "現場到着"], ["CONT", "傷病者接触"], ["ASMT", "初期評価"], ["DEC", "判断・方針変更"], ["TX", "処置"], ["HOSPC", "医療機関連絡"], ["MC", "MC要請"], ["LOAD", "車内収容"], ["DEP", "現場出発"], ["HOSPA", "搬送先到着"], ["HAND", "医師引継ぎ"], ["OTH", "その他"]], "L_DECTYPE": [["URG", "緊急度・重症度判断"], ["TX", "処置の実施判断"], ["DEST", "搬送先選定"], ["DEP", "現場出発の判断"], ["MC", "MC要請の判断"], ["SUP", "応援要請の判断"], ["NTR", "不搬送の判断"], ["CHG", "方針変更"], ["OTH", "その他"]], "L_REASON": [["OBS", "観察所見に基づく"], ["PROT", "プロトコル・基準に基づく"], ["MC", "MC指示・助言に基づく"], ["WILL", "傷病者・家族の意向"], ["SAFE", "安全・環境上の理由"], ["TIME", "時間的要因"], ["EXP", "経験に基づく判断"], ["OTH", "その他"]], "L_RESULT": [["DONE", "予定どおり実施"], ["PART", "一部実施"], ["FAIL", "実施できなかった"], ["STOP", "中止"], ["UNK", "不明"]], "L_RATING": [["A", "A：妥当である"], ["B", "B：概ね妥当である"], ["C", "C：改善の余地がある"], ["D", "D：明らかな問題がある"], ["E", "E：資料不足等により評価困難"]], "L_VIEW": [["TIME", "当時の情報で評価した"], ["OUTC", "結果情報も考慮した（根拠に理由を記載）"]], "L_CONFIRM": [["DRAFT", "下書き"], ["FIX", "確定"], ["RET", "差戻し"]], "L_CAUSE": [["C01", "個人の知識・技術"], ["C02", "チーム内の連携・役割分担"], ["C03", "教育・訓練"], ["C04", "資器材・装備"], ["C05", "活動要領・マニュアル"], ["C06", "指令・通信体制"], ["C07", "医療機関・MC体制"], ["C08", "人員・組織体制"], ["C09", "現場環境・外部要因"], ["C10", "その他"], ["C11", "原因特定困難"]], "L_LEVEL": [["IND", "個人要因"], ["TEAM", "チーム要因"], ["ORG", "組織要因"], ["EXT", "外部要因"], ["UNK", "特定困難"]], "L_CERT": [["SURE", "確実"], ["PROB", "推定"], ["UNC", "不確実"]], "L_IMPCAT": [["P01", "個人への教育"], ["P02", "チーム訓練"], ["P03", "全体研修"], ["P04", "マニュアル改訂"], ["P05", "資器材の変更・追加"], ["P06", "指令体制の改善"], ["P07", "医療機関・MCとの調整"], ["P08", "組織体制の見直し"], ["P09", "経過観察"], ["P10", "改善措置不要"], ["P11", "その他"]], "L_STATUS": [["NS", "未着手"], ["IP", "実施中"], ["DONE", "実施済"], ["STOP", "中止"], ["NN", "不要と判断"]], "L_EFFECT": [["OK", "改善を確認"], ["PART", "一部改善"], ["NO", "改善なし"], ["PEND", "確認前"], ["NE", "確認困難"]], "L_RECUR": [["NO", "再発なし"], ["YES", "再発あり"], ["OBS", "観察期間中"], ["UNK", "不明"]], "L_CHECK": [["MET", "満たす"], ["PART", "一部"], ["NOT", "満たさない"], ["INSUF", "資料不足"], ["NA", "該当なし"]], "L_GOOD": [["Y", "良好事例として共有"], ["N", "該当しない"]], "L_DISCUSS": [["SAME", "一致（協議不要）"], ["KEEP", "協議し第一評価を維持"], ["CHG", "協議し第一評価を変更"]]}, "questions": [{"question_id": "Q1010", "section": "1 現場の状況", "record_category": "事実", "question_text": "現場の種別", "choice_set_id": "L_SITE", "note_if": ["OTH"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "具体的な住所・施設名は書かない"}, {"question_id": "Q1020", "section": "1 現場の状況", "record_category": "事実", "question_text": "現場に危険要因（交通・転落・暴力・感染等）があったか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "「あり」の場合は内容を補足欄に"}, {"question_id": "Q1030", "section": "1 現場の状況", "record_category": "事実", "question_text": "接触時に家族・関係者・目撃者がいたか", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q1040", "section": "1 現場の状況", "record_category": "事実", "question_text": "先着隊・支援隊（ポンプ隊等）の活動があったか", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": false, "help_text": ""}, {"question_id": "Q1050", "section": "1 現場の状況", "record_category": "事実", "question_text": "傷病者の搬出に特別な困難（階段・狭隘・救出等）があったか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "「あり」の場合は内容を補足欄に"}, {"question_id": "Q2010", "section": "2 傷病者の状態", "record_category": "事実", "question_text": "接触時の意識レベル（JCS）", "choice_set_id": "L_JCS", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "記録に基づいて選択"}, {"question_id": "Q2020", "section": "2 傷病者の状態", "record_category": "事実", "question_text": "接触時の呼吸", "choice_set_id": "L_RESP", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q2030", "section": "2 傷病者の状態", "record_category": "事実", "question_text": "接触時の脈拍", "choice_set_id": "L_PULSE", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q2040", "section": "2 傷病者の状態", "record_category": "事実", "question_text": "活動中に傷病者の状態は変化したか", "choice_set_id": "L_CHANGE", "note_if": ["WORSE", "IMPR", "FLUC"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "変化した場合は内容と把握時点を補足欄に"}, {"question_id": "Q3C10", "section": "3 区分別（心肺停止）", "record_category": "事実", "question_text": "心停止の目撃", "choice_set_id": "L_WITNESS", "note_if": [], "applicable": ["CPA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3C20", "section": "3 区分別（心肺停止）", "record_category": "事実", "question_text": "救急隊到着前の市民によるCPR（バイスタンダーCPR）", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["CPA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3C30", "section": "3 区分別（心肺停止）", "record_category": "事実", "question_text": "初期心電図波形", "choice_set_id": "L_RHYTHM", "note_if": [], "applicable": ["CPA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3C40", "section": "3 区分別（心肺停止）", "record_category": "活動", "question_text": "特定行為（器具による気道確保・静脈路確保・薬剤投与）を実施したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["CPA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3C41", "section": "3 区分別（心肺停止）", "record_category": "理由", "question_text": "特定行為を実施しなかった（できなかった）理由", "choice_set_id": "L_TEXT", "note_if": ["W"], "applicable": ["CPA"], "cond_question_id": "Q3C40", "show_if": ["N"], "required": true, "help_text": "当時の状況として記入"}, {"question_id": "Q3C50", "section": "3 区分別（心肺停止）", "record_category": "事実", "question_text": "搬送先到着までの心拍再開（ROSC）", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["CPA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3C60", "section": "3 区分別（心肺停止）", "record_category": "事実", "question_text": "心肺蘇生を望まない意思表示（DNAR等）の情報", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["CPA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "「あり」の場合は対応を補足欄に"}, {"question_id": "Q3T10", "section": "3 区分別（外傷）", "record_category": "事実", "question_text": "受傷機転", "choice_set_id": "L_MECH", "note_if": ["OTH"], "applicable": ["TRA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3T20", "section": "3 区分別（外傷）", "record_category": "認識", "question_text": "高エネルギー事故を疑う状況と認識したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["TRA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3T30", "section": "3 区分別（外傷）", "record_category": "事実", "question_text": "初期評価でショック徴候を認めたか", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["TRA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3T40", "section": "3 区分別（外傷）", "record_category": "判断", "question_text": "ロード＆ゴーを判断したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["TRA"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3T50", "section": "3 区分別（外傷）", "record_category": "事実", "question_text": "救出・搬出に時間を要したか", "choice_set_id": "L_YN", "note_if": ["Y"], "applicable": ["TRA"], "cond_question_id": null, "show_if": [], "required": false, "help_text": ""}, {"question_id": "Q3S10", "section": "3 区分別（脳卒中）", "record_category": "事実", "question_text": "発症時刻（最終健常確認時刻）を確認できたか", "choice_set_id": "L_ONSET", "note_if": [], "applicable": ["STR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3S20", "section": "3 区分別（脳卒中）", "record_category": "活動", "question_text": "脳卒中スケールによる評価を行ったか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["STR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3S30", "section": "3 区分別（脳卒中）", "record_category": "事実", "question_text": "脳卒中スケールの所見", "choice_set_id": "L_STRS", "note_if": [], "applicable": ["STR"], "cond_question_id": "Q3S20", "show_if": ["Y"], "required": true, "help_text": "使用したスケール名を補足欄に"}, {"question_id": "Q3S40", "section": "3 区分別（脳卒中）", "record_category": "事実", "question_text": "抗凝固薬等の服薬情報", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["STR"], "cond_question_id": null, "show_if": [], "required": false, "help_text": ""}, {"question_id": "Q3A10", "section": "3 区分別（胸痛）", "record_category": "事実", "question_text": "症状の発症時刻を確認できたか", "choice_set_id": "L_ONSET", "note_if": [], "applicable": ["ACS"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3A20", "section": "3 区分別（胸痛）", "record_category": "活動", "question_text": "12誘導心電図を記録したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["ACS"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3A21", "section": "3 区分別（胸痛）", "record_category": "活動", "question_text": "12誘導心電図を医療機関へ伝送したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["ACS"], "cond_question_id": "Q3A20", "show_if": ["Y"], "required": false, "help_text": ""}, {"question_id": "Q3N10", "section": "3 区分別（不搬送）", "record_category": "事実", "question_text": "不搬送となった理由", "choice_set_id": "L_NTR", "note_if": ["OTH"], "applicable": ["NTR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3N20", "section": "3 区分別（不搬送）", "record_category": "活動", "question_text": "搬送の必要性・リスクを本人等に説明したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["NTR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3N30", "section": "3 区分別（不搬送）", "record_category": "活動", "question_text": "本人の意思決定能力を確認したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["NTR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3N40", "section": "3 区分別（不搬送）", "record_category": "活動", "question_text": "説明・同意の記録（署名等）を得たか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["NTR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q3N50", "section": "3 区分別（不搬送）", "record_category": "活動", "question_text": "症状悪化時の再要請について案内したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["NTR"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q4010", "section": "4 活動者の認識", "record_category": "認識", "question_text": "接触時、最も重要な問題（想定した病態）は何と考えたか", "choice_set_id": "L_TEXT", "note_if": ["W"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "当時考えていたことを書く（後から分かったことは書かない）"}, {"question_id": "Q4020", "section": "4 活動者の認識", "record_category": "認識", "question_text": "接触時の緊急度の認識", "choice_set_id": "L_URG", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q4030", "section": "4 活動者の認識", "record_category": "認識", "question_text": "活動中に病態の想定を変更したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q4031", "section": "4 活動者の認識", "record_category": "認識", "question_text": "想定を変更したきっかけ", "choice_set_id": "L_TRIG", "note_if": ["OTH"], "applicable": ["ALL"], "cond_question_id": "Q4030", "show_if": ["Y"], "required": true, "help_text": "変更後の想定を補足欄に"}, {"question_id": "Q5010", "section": "5 判断の概要", "record_category": "判断", "question_text": "搬送先選定で地域の実施基準等を参照したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["CPA", "TRA", "STR", "ACS", "RES", "CON", "OTH"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "主要な判断の詳細は「06_判断・活動」に記録"}, {"question_id": "Q5020", "section": "5 判断の概要", "record_category": "事実", "question_text": "医療機関への受入照会回数", "choice_set_id": "L_INQ", "note_if": [], "applicable": ["CPA", "TRA", "STR", "ACS", "RES", "CON", "OTH"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q5030", "section": "5 判断の概要", "record_category": "活動", "question_text": "MC（指示・指導・助言）を要請したか", "choice_set_id": "L_YN", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q5031", "section": "5 判断の概要", "record_category": "理由", "question_text": "MC要請の主な目的", "choice_set_id": "L_MCPUR", "note_if": ["OTH"], "applicable": ["ALL"], "cond_question_id": "Q5030", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6000", "section": "6 制約・困難", "record_category": "制約", "question_text": "判断や活動に影響した制約・困難があったか", "choice_set_id": "L_EXIST", "note_if": [], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "「あり」で下の項目が表示される"}, {"question_id": "Q6010", "section": "6 制約・困難", "record_category": "制約", "question_text": "人員の不足", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6020", "section": "6 制約・困難", "record_category": "制約", "question_text": "現場の狭隘・搬出困難", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6030", "section": "6 制約・困難", "record_category": "制約", "question_text": "現場の危険", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6040", "section": "6 制約・困難", "record_category": "制約", "question_text": "傷病者・関係者の協力が得にくい", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6050", "section": "6 制約・困難", "record_category": "制約", "question_text": "意思疎通の困難（言語・聴覚等）", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6060", "section": "6 制約・困難", "record_category": "制約", "question_text": "照明・天候", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6070", "section": "6 制約・困難", "record_category": "制約", "question_text": "資器材の不足・不具合", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6080", "section": "6 制約・困難", "record_category": "制約", "question_text": "通信（無線・電話）の不良", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6090", "section": "6 制約・困難", "record_category": "制約", "question_text": "搬送先の受入困難", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6100", "section": "6 制約・困難", "record_category": "制約", "question_text": "時間的な切迫", "choice_set_id": "L_IMPACT", "note_if": [], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": true, "help_text": ""}, {"question_id": "Q6110", "section": "6 制約・困難", "record_category": "制約", "question_text": "その他の制約", "choice_set_id": "L_IMPACT", "note_if": ["SOME", "MAJ"], "applicable": ["ALL"], "cond_question_id": "Q6000", "show_if": ["Y"], "required": false, "help_text": "内容を補足欄に"}, {"question_id": "Q7010", "section": "7 確認できなかった情報", "record_category": "未確認", "question_text": "確認しようとしたが確認できなかった情報があったか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "情報の種類ごとの状況は「04_情報把握」に記録"}, {"question_id": "Q8010", "section": "8 振り返り（自己評価）", "record_category": "自己評価", "question_text": "判断に迷った場面があったか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": "場面と迷った理由を補足欄に"}, {"question_id": "Q8020", "section": "8 振り返り（自己評価）", "record_category": "自己評価", "question_text": "困難だった点があったか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q8030", "section": "8 振り返り（自己評価）", "record_category": "自己評価", "question_text": "うまくいった点・良かった連携", "choice_set_id": "L_TEXT", "note_if": ["W"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": false, "help_text": ""}, {"question_id": "Q8040", "section": "8 振り返り（自己評価）", "record_category": "自己評価", "question_text": "同様の症例で次に変えたい点があるか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": true, "help_text": ""}, {"question_id": "Q8050", "section": "8 振り返り（自己評価）", "record_category": "自己評価", "question_text": "組織に改善してほしい点（装備・手順・体制等）があるか", "choice_set_id": "L_EXIST", "note_if": ["Y"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": false, "help_text": ""}, {"question_id": "Q8060", "section": "8 振り返り（自己評価）", "record_category": "自己評価", "question_text": "その他（自由記述）", "choice_set_id": "L_TEXT", "note_if": ["W"], "applicable": ["ALL"], "cond_question_id": null, "show_if": [], "required": false, "help_text": ""}], "info_items": [{"info_item_id": "I01", "item_name": "通報・指令内容（主訴・状況）", "hint": "出動途上で把握した内容", "applicable": ["ALL"], "required": true}, {"info_item_id": "I02", "item_name": "発症・受傷時刻", "hint": "いつ・誰から得たか", "applicable": ["ALL"], "required": true}, {"info_item_id": "I03", "item_name": "既往歴", "hint": "", "applicable": ["ALL"], "required": true}, {"info_item_id": "I04", "item_name": "服薬内容", "hint": "お薬手帳等の確認", "applicable": ["ALL"], "required": true}, {"info_item_id": "I05", "item_name": "アレルギー", "hint": "", "applicable": ["ALL"], "required": false}, {"info_item_id": "I06", "item_name": "最終健常確認時刻", "hint": "発症時刻と区別する", "applicable": ["STR"], "required": true}, {"info_item_id": "I07", "item_name": "普段の状態（ADL・認知機能）", "hint": "", "applicable": ["ALL"], "required": false}, {"info_item_id": "I08", "item_name": "初回バイタルサイン", "hint": "", "applicable": ["ALL"], "required": true}, {"info_item_id": "I09", "item_name": "倒れた時の状況・目撃状況", "hint": "", "applicable": ["CPA", "CON"], "required": true}, {"info_item_id": "I10", "item_name": "DNAR・事前指示", "hint": "", "applicable": ["CPA"], "required": true}, {"info_item_id": "I11", "item_name": "受傷機転の詳細", "hint": "車両損傷・高さ等", "applicable": ["TRA"], "required": true}, {"info_item_id": "I12", "item_name": "かかりつけ医療機関", "hint": "医療機関名は書かない", "applicable": ["ALL"], "required": false}, {"info_item_id": "I13", "item_name": "12誘導心電図所見", "hint": "", "applicable": ["ACS"], "required": true}, {"info_item_id": "I14", "item_name": "本人の意思・意思決定能力", "hint": "", "applicable": ["NTR"], "required": true}, {"info_item_id": "I15", "item_name": "血糖値", "hint": "", "applicable": ["CON", "STR"], "required": true}, {"info_item_id": "I90", "item_name": "その他の重要情報①", "hint": "内容を右欄に記入", "applicable": ["ALL"], "required": false}, {"info_item_id": "I91", "item_name": "その他の重要情報②", "hint": "内容を右欄に記入", "applicable": ["ALL"], "required": false}], "review_items": [{"review_item_id": "V01", "item_name": "情報収集", "criteria": "当時の状況で入手可能だった重要情報を収集しようとしたか。確認できなかった場合の理由が状況上妥当か。", "guide_questions": "「確認していない」重要情報はないか／確認できなかった理由は当時の状況でやむを得ないか", "applicable": ["ALL"], "related_records": "04_情報把握, Q7010", "anchor_c": "容易に確認できた重要情報を確認していない（判断への影響は限定的）", "anchor_d": "判断に直結する情報（DNAR・発症時刻等）を確認せず、方針に重大な影響を与え得た", "checkpoints": [{"checkpoint_id": "V01-1", "checkpoint_text": "通報・指令内容を活動方針の想定に活用したか", "related_records": "I01"}, {"checkpoint_id": "V01-2", "checkpoint_text": "判断に必要な情報（既往・服薬・発症時刻等）を収集しようとしたか", "related_records": "04_情報把握"}, {"checkpoint_id": "V01-3", "checkpoint_text": "確認できなかった情報の理由が状況上やむを得ないか", "related_records": "04_情報把握, Q7010"}]}, {"review_item_id": "V02", "item_name": "観察・評価", "criteria": "初期評価・バイタル測定が適時に行われ、状態変化を把握できていたか。", "guide_questions": "接触から初期評価までの時間は／状態変化に気付いた時点は", "applicable": ["ALL"], "related_records": "05_時系列, Q2010-Q2040", "anchor_c": "初期評価・再評価が遅れた、または間隔が空いた", "anchor_d": "悪化を観察できる状況で把握せず、対応が遅れた", "checkpoints": [{"checkpoint_id": "V02-1", "checkpoint_text": "接触後、初期評価（意識・呼吸・循環）が遅滞なく行われたか", "related_records": "05_時系列, Q2010-Q2030"}, {"checkpoint_id": "V02-2", "checkpoint_text": "バイタルサインが必要な間隔で再評価されたか", "related_records": "05_時系列"}, {"checkpoint_id": "V02-3", "checkpoint_text": "状態変化を把握し、活動に反映したか", "related_records": "Q2040, 06_判断・活動"}]}, {"review_item_id": "V03", "item_name": "緊急度・重症度の判断", "criteria": "当時把握していた情報から、その判断は合理的に導けるか（結果から評価しない）。", "guide_questions": "判断に使った情報は何か／同じ情報から他の判断が明らかに優先されたか", "applicable": ["ALL"], "related_records": "Q4020, 06_判断・活動", "anchor_c": "判断は概ね妥当だが、情報の取り込みや見直しに遅れがあった", "anchor_d": "当時の情報から明らかに高い緊急度が導かれるのに、根拠なく低く判断した", "checkpoints": [{"checkpoint_id": "V03-1", "checkpoint_text": "当時把握していた情報から緊急度を判断していたか", "related_records": "Q4020, 04_情報把握"}, {"checkpoint_id": "V03-2", "checkpoint_text": "判断が当時の情報・基準と矛盾しないか", "related_records": "06_判断・活動"}, {"checkpoint_id": "V03-3", "checkpoint_text": "新たな情報・状態変化に応じて判断を見直したか", "related_records": "Q4030, Q4031"}]}, {"review_item_id": "V04", "item_name": "判断と活動の整合", "criteria": "判断した内容と実際の活動に矛盾がないか。", "guide_questions": "判断した処置・方針は実施されたか／実施できなかった理由は記録されているか", "applicable": ["ALL"], "related_records": "06_判断・活動", "anchor_c": "判断と活動の一部が一致せず、理由が記録されていない", "anchor_d": "判断と矛盾する活動を行い、合理的な理由がない", "checkpoints": [{"checkpoint_id": "V04-1", "checkpoint_text": "判断した方針どおりの活動が実施されたか", "related_records": "06_判断・活動（活動結果）"}, {"checkpoint_id": "V04-2", "checkpoint_text": "実施できなかった活動の理由が記録されているか", "related_records": "06_判断・活動"}]}, {"review_item_id": "V05", "item_name": "処置の実施", "criteria": "プロトコルに沿い、状況に応じた処置が実施されたか。", "guide_questions": "必要な処置の実施・不実施の理由は／手技上の問題はあったか", "applicable": ["ALL"], "related_records": "06_判断・活動, 05_時系列", "anchor_c": "処置の手技・タイミングに改善の余地がある", "anchor_d": "適応のある処置を正当な理由なく行わなかった、または適応外の処置を行った", "checkpoints": [{"checkpoint_id": "V05-1", "checkpoint_text": "必要な処置がプロトコルに沿って実施されたか", "related_records": "05_時系列, 06_判断・活動"}, {"checkpoint_id": "V05-2", "checkpoint_text": "実施しなかった処置に正当な理由があるか", "related_records": "06_判断・活動"}, {"checkpoint_id": "V05-3", "checkpoint_text": "処置が現場活動時間に不相応な影響を与えていないか", "related_records": "05_時系列（所要時間）"}]}, {"review_item_id": "V06", "item_name": "時間管理", "criteria": "現場活動時間・搬送時間が、制約を考慮しても妥当な範囲か。", "guide_questions": "現場滞在時間に影響した要因は何か／短縮できた要素はあるか", "applicable": ["ALL"], "related_records": "05_時系列（所要時間）, 6 制約", "anchor_c": "制約を考慮しても短縮できた要素があった", "anchor_d": "制約で説明できない著しい遅延があった", "checkpoints": [{"checkpoint_id": "V06-1", "checkpoint_text": "現場到着から接触までの時間は状況に照らし妥当か", "related_records": "05_時系列（所要時間）"}, {"checkpoint_id": "V06-2", "checkpoint_text": "現場滞在時間は病態と制約に照らし妥当か", "related_records": "05_時系列, 6 制約"}, {"checkpoint_id": "V06-3", "checkpoint_text": "時間を要した要因が記録から特定できるか", "related_records": "6 制約, 06_判断・活動"}]}, {"review_item_id": "V07", "item_name": "搬送先選定", "criteria": "実施基準等に照らし、病態に応じた搬送先が選定されたか。", "guide_questions": "選定理由は／照会回数と影響は", "applicable": ["CPA", "TRA", "STR", "ACS", "RES", "CON", "OTH"], "related_records": "Q5010, Q5020, 06_判断・活動", "anchor_c": "選定理由が不明確、または照会に不要な時間を要した", "anchor_d": "実施基準に明らかに反する選定を正当な理由なく行った", "checkpoints": [{"checkpoint_id": "V07-1", "checkpoint_text": "病態に応じた医療機関を実施基準等に沿って選定したか", "related_records": "Q5010, 06_判断・活動"}, {"checkpoint_id": "V07-2", "checkpoint_text": "照会・選定に要した時間が妥当か", "related_records": "Q5020, 05_時系列"}]}, {"review_item_id": "V08", "item_name": "医療機関・MCとの連携", "criteria": "MC要請・医療機関連絡が適時・適切だったか。", "guide_questions": "要請・連絡のタイミングと内容は", "applicable": ["ALL"], "related_records": "Q5030, 05_時系列", "anchor_c": "MC要請・連絡のタイミングや内容に改善の余地がある", "anchor_d": "指示が必要な行為を指示なく行った、または必要な要請を行わなかった", "checkpoints": [{"checkpoint_id": "V08-1", "checkpoint_text": "MC要請が必要な場面で適時に行われたか", "related_records": "Q5030, 05_時系列"}, {"checkpoint_id": "V08-2", "checkpoint_text": "医療機関への情報伝達が適切だったか", "related_records": "05_時系列"}]}, {"review_item_id": "V09", "item_name": "隊内連携・安全管理", "criteria": "役割分担・情報共有・安全確保が適切だったか。", "guide_questions": "隊員間の指示・報告は／危険要因への対応は", "applicable": ["ALL"], "related_records": "Q1020, 6 制約", "anchor_c": "役割分担・情報共有・応援要請に改善の余地がある", "anchor_d": "隊員・傷病者の安全を損なうおそれのある活動があった", "checkpoints": [{"checkpoint_id": "V09-1", "checkpoint_text": "隊員間の役割分担・指示・報告が適切だったか", "related_records": "Q8010, Q8020"}, {"checkpoint_id": "V09-2", "checkpoint_text": "現場の危険要因に対応したか", "related_records": "Q1020, Q6030"}, {"checkpoint_id": "V09-3", "checkpoint_text": "必要な応援要請を適時に行ったか", "related_records": "Q1040, 06_判断・活動"}]}, {"review_item_id": "V10", "item_name": "記録の正確性・完全性", "criteria": "検証に必要な事実・時刻が記録されているか。", "guide_questions": "時刻の確実性が「不明」「推定」の重要イベントはないか", "applicable": ["ALL"], "related_records": "05_時系列, 全体", "anchor_c": "重要な時刻・判断理由の一部が記録されていない", "anchor_d": "記録が事実と矛盾する、または判断過程の大部分を再構成できない", "checkpoints": [{"checkpoint_id": "V10-1", "checkpoint_text": "主要イベントの時刻が確実に記録されているか", "related_records": "05_時系列（確実性）"}, {"checkpoint_id": "V10-2", "checkpoint_text": "判断の理由が記録から読み取れるか", "related_records": "06_判断・活動"}, {"checkpoint_id": "V10-3", "checkpoint_text": "確認できなかった情報とその理由が記録されているか", "related_records": "04_情報把握"}]}, {"review_item_id": "V11", "item_name": "心肺蘇生の質と特定行為", "criteria": "胸骨圧迫の継続、除細動・特定行為の判断と実施が適切か。", "guide_questions": "圧迫中断の要因は／特定行為の不実施理由は", "applicable": ["CPA"], "related_records": "Q3C10-Q3C60", "anchor_c": "圧迫中断や除細動・特定行為の判断に遅れがあった", "anchor_d": "除細動の適応波形に正当な理由なく除細動を行わなかった等", "checkpoints": [{"checkpoint_id": "V11-1", "checkpoint_text": "胸骨圧迫の開始・継続（中断の最小化）が図られたか", "related_records": "05_時系列, Q8020"}, {"checkpoint_id": "V11-2", "checkpoint_text": "除細動の適応判断と実施が遅滞なかったか", "related_records": "Q3C30, 05_時系列"}, {"checkpoint_id": "V11-3", "checkpoint_text": "特定行為の適応判断・実施・不実施理由が適切か", "related_records": "Q3C40, Q3C41"}]}, {"review_item_id": "V12", "item_name": "外傷評価とロード＆ゴー", "criteria": "受傷機転・ショック徴候からの判断と現場時間が適切か。", "guide_questions": "ロード＆ゴーの判断時点は", "applicable": ["TRA"], "related_records": "Q3T10-Q3T50", "anchor_c": "判断は妥当だが現場時間が長い", "anchor_d": "高エネルギー事故・ショック徴候があるのに現場処置を優先し著しく遅延した", "checkpoints": [{"checkpoint_id": "V12-1", "checkpoint_text": "受傷機転・ショック徴候から重症度を判断したか", "related_records": "Q3T10-Q3T30"}, {"checkpoint_id": "V12-2", "checkpoint_text": "ロード＆ゴーの判断時点と現場時間が妥当か", "related_records": "Q3T40, 05_時系列"}]}, {"review_item_id": "V13", "item_name": "発症時刻確認と脳卒中評価", "criteria": "発症時刻（最終健常）確認とスケール評価、選定が適切か。", "guide_questions": "発症時刻の情報源は", "applicable": ["STR"], "related_records": "Q3S10-Q3S40, I06", "anchor_c": "発症時刻（最終健常）の確認が不十分", "anchor_d": "発症時刻を確認せず、搬送先選定に重大な影響を与え得た", "checkpoints": [{"checkpoint_id": "V13-1", "checkpoint_text": "発症時刻（最終健常確認時刻）を確認したか", "related_records": "Q3S10, I06"}, {"checkpoint_id": "V13-2", "checkpoint_text": "脳卒中スケール評価を行い、選定に反映したか", "related_records": "Q3S20, Q3S30"}]}, {"review_item_id": "V14", "item_name": "12誘導心電図と搬送先", "criteria": "心電図記録・伝送と搬送先選定が適切か。", "guide_questions": "記録・伝送の時点は", "applicable": ["ACS"], "related_records": "Q3A10-Q3A21", "anchor_c": "心電図の記録・伝送が遅れた", "anchor_d": "適応があるのに記録せず、搬送先選定に重大な影響を与え得た", "checkpoints": [{"checkpoint_id": "V14-1", "checkpoint_text": "12誘導心電図の記録（・伝送）を適時に行ったか", "related_records": "Q3A20, Q3A21"}, {"checkpoint_id": "V14-2", "checkpoint_text": "心電図所見を搬送先選定に反映したか", "related_records": "I13, 06_判断・活動"}]}, {"review_item_id": "V15", "item_name": "不搬送時の説明・同意・記録", "criteria": "意思決定能力の確認、リスク説明、記録、再要請案内が行われたか。", "guide_questions": "説明内容と本人の理解は", "applicable": ["NTR"], "related_records": "Q3N10-Q3N50, I14", "anchor_c": "説明・記録の一部が不十分", "anchor_d": "意思決定能力の確認や説明なく不搬送とした", "checkpoints": [{"checkpoint_id": "V15-1", "checkpoint_text": "本人の意思決定能力を確認したか", "related_records": "Q3N30, I14"}, {"checkpoint_id": "V15-2", "checkpoint_text": "搬送の必要性・リスクを説明し理解を確認したか", "related_records": "Q3N20"}, {"checkpoint_id": "V15-3", "checkpoint_text": "説明・同意の内容を記録したか", "related_records": "Q3N40"}, {"checkpoint_id": "V15-4", "checkpoint_text": "症状悪化時の再要請を案内したか", "related_records": "Q3N50"}]}]};
+const SAMPLE_DB = {"case_record": [{"case_id": "2026-0001", "fiscal_year": 2026, "occurrence_month": "2026-09", "case_category_code": "CPA", "age_group_code": "ELD", "sex_code": "NREC", "etiology_code": "END", "review_target_code": "ALL", "crew_unit_id": "UNIT-01", "progress_code": "S6", "question_version_id": "Q-0.1", "criteria_version_id": "V-0.2", "registered_at": "2026-09-20", "registered_by": "U-101", "submitted_at": "2026-09-20"}], "answer": [{"case_id": "2026-0001", "question_id": "Q1010", "answer_code": "HOME", "note_text": "集合住宅4階（エレベーターなし）"}, {"case_id": "2026-0001", "question_id": "Q1020", "answer_code": "N", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q1030", "answer_code": "Y", "note_text": "妻"}, {"case_id": "2026-0001", "question_id": "Q1040", "answer_code": "Y", "note_text": "支援隊（ポンプ隊）が後着"}, {"case_id": "2026-0001", "question_id": "Q1050", "answer_code": "Y", "note_text": "階段が狭く、担架での搬出に時間を要した"}, {"case_id": "2026-0001", "question_id": "Q2010", "answer_code": "J300", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q2020", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q2030", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q2040", "answer_code": "FLUC", "note_text": "搬送中に一時ROSC、再度心停止"}, {"case_id": "2026-0001", "question_id": "Q3C10", "answer_code": "FAM", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q3C20", "answer_code": "Y", "note_text": "妻が通信指令員の口頭指導で実施"}, {"case_id": "2026-0001", "question_id": "Q3C30", "answer_code": "VF", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q3C40", "answer_code": "Y", "note_text": "気道確保のみ。静脈路は2回試行し確保できず"}, {"case_id": "2026-0001", "question_id": "Q3C50", "answer_code": "Y", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q3C60", "answer_code": "N", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q4010", "answer_code": "W", "note_text": "心原性の心停止（VF）。既往から心疾患を想定"}, {"case_id": "2026-0001", "question_id": "Q4020", "answer_code": "RED", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q4030", "answer_code": "N", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q5010", "answer_code": "Y", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q5020", "answer_code": "1", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q5030", "answer_code": "Y", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q5031", "answer_code": "ORD", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6000", "answer_code": "Y", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6010", "answer_code": "MAJ", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6020", "answer_code": "MAJ", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6030", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6040", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6050", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6060", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6070", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6080", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6090", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6100", "answer_code": "SOME", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q6110", "answer_code": "NONE", "note_text": null}, {"case_id": "2026-0001", "question_id": "Q7010", "answer_code": "Y", "note_text": "服薬内容（お薬手帳の所在が分からなかった）"}], "self_evaluation": [{"case_id": "2026-0001", "question_id": "Q8010", "answer_code": "Y", "note_text": "静脈路確保を3回目まで試みるか、現場出発を優先するか"}, {"case_id": "2026-0001", "question_id": "Q8020", "answer_code": "Y", "note_text": "階段搬出中の胸骨圧迫の質の維持"}, {"case_id": "2026-0001", "question_id": "Q8030", "answer_code": "W", "note_text": "家族の口頭指導CPRが早期に開始されていた。除細動まで迅速"}, {"case_id": "2026-0001", "question_id": "Q8040", "answer_code": "Y", "note_text": "現場到着時に搬出経路を確認し、早期に支援隊を要請する"}, {"case_id": "2026-0001", "question_id": "Q8050", "answer_code": "Y", "note_text": "MC要請時刻を記録しやすくしてほしい"}, {"case_id": "2026-0001", "question_id": "Q8060", "answer_code": "NONE", "note_text": null}], "info_record": [{"case_id": "2026-0001", "info_item_id": "I01", "awareness_code": "PRE", "acquired_time": "19:43", "source_code": "DISP", "reflection_code": "YES", "note_text": "「夫が倒れて反応がない」。CPA想定で出動"}, {"case_id": "2026-0001", "info_item_id": "I02", "awareness_code": "SCENE", "acquired_time": "19:53", "source_code": "FAM", "reflection_code": "YES", "note_text": "19時40分頃に倒れた（妻）"}, {"case_id": "2026-0001", "info_item_id": "I03", "awareness_code": "SCENE", "acquired_time": "19:55", "source_code": "FAM", "reflection_code": "YES", "note_text": "心筋梗塞の既往"}, {"case_id": "2026-0001", "info_item_id": "I04", "awareness_code": "TRIED", "acquired_time": null, "source_code": null, "reflection_code": null, "note_text": "お薬手帳の所在が分からず、家族も把握していなかった"}, {"case_id": "2026-0001", "info_item_id": "I05", "awareness_code": "NOCHK", "acquired_time": null, "source_code": null, "reflection_code": null, "note_text": null}, {"case_id": "2026-0001", "info_item_id": "I07", "awareness_code": "SCENE", "acquired_time": null, "source_code": "FAM", "reflection_code": "NOEFF", "note_text": "ADL自立"}, {"case_id": "2026-0001", "info_item_id": "I08", "awareness_code": "SCENE", "acquired_time": "19:53", "source_code": "OBS", "reflection_code": "YES", "note_text": null}, {"case_id": "2026-0001", "info_item_id": "I09", "awareness_code": "SCENE", "acquired_time": "19:53", "source_code": "FAM", "reflection_code": "YES", "note_text": "目撃あり、妻がCPR実施"}, {"case_id": "2026-0001", "info_item_id": "I10", "awareness_code": "SCENE", "acquired_time": "19:56", "source_code": "FAM", "reflection_code": "YES", "note_text": "DNARの意思表示なし"}, {"case_id": "2026-0001", "info_item_id": "I12", "awareness_code": "SCENE", "acquired_time": null, "source_code": "FAM", "reflection_code": "NOEFF", "note_text": null}, {"case_id": "2026-0001", "info_item_id": "I90", "awareness_code": null, "acquired_time": null, "source_code": null, "reflection_code": null, "note_text": null}, {"case_id": "2026-0001", "info_item_id": "I91", "awareness_code": null, "acquired_time": null, "source_code": null, "reflection_code": null, "note_text": null}], "event": [{"event_id": "2026-0001-E01", "case_id": "2026-0001", "day_offset": 0, "event_time": "19:42", "time_certainty_code": "REC", "event_type_code": "CALL", "content": "119番通報「夫が倒れて反応がない」", "remarks": null, "input_order": 1}, {"event_id": "2026-0001-E02", "case_id": "2026-0001", "day_offset": 0, "event_time": "19:43", "time_certainty_code": "REC", "event_type_code": "DISP", "content": null, "remarks": null, "input_order": 2}, {"event_id": "2026-0001-E03", "case_id": "2026-0001", "day_offset": 0, "event_time": "19:51", "time_certainty_code": "REC", "event_type_code": "ARR", "content": "集合住宅4階、エレベーターなし", "remarks": null, "input_order": 3}, {"event_id": "2026-0001-E04", "case_id": "2026-0001", "day_offset": 0, "event_time": "19:53", "time_certainty_code": "MEM", "event_type_code": "CONT", "content": "妻がCPR実施中。呼吸なし・脈拍触知せず", "remarks": null, "input_order": 4}, {"event_id": "2026-0001-E05", "case_id": "2026-0001", "day_offset": 0, "event_time": "19:54", "time_certainty_code": "REC", "event_type_code": "TX", "content": "心電図VF、除細動1回", "remarks": "除細動器の記録", "input_order": 5}, {"event_id": "2026-0001-E06", "case_id": "2026-0001", "day_offset": 0, "event_time": "19:56", "time_certainty_code": "MEM", "event_type_code": "DEC", "content": "搬出困難のため支援隊を要請", "remarks": null, "input_order": 6}, {"event_id": "2026-0001-E07", "case_id": "2026-0001", "day_offset": 0, "event_time": null, "time_certainty_code": "UNK", "event_type_code": "MC", "content": "特定行為の指示要請", "remarks": "要請時刻の記録なし", "input_order": 7}, {"event_id": "2026-0001-E08", "case_id": "2026-0001", "day_offset": 0, "event_time": "20:02", "time_certainty_code": "MEM", "event_type_code": "TX", "content": "器具による気道確保", "remarks": null, "input_order": 8}, {"event_id": "2026-0001-E09", "case_id": "2026-0001", "day_offset": 0, "event_time": "20:05", "time_certainty_code": "EST", "event_type_code": "TX", "content": "静脈路確保2回試行、確保できず", "remarks": null, "input_order": 9}, {"event_id": "2026-0001-E10", "case_id": "2026-0001", "day_offset": 0, "event_time": "20:12", "time_certainty_code": "MEM", "event_type_code": "LOAD", "content": "階段搬出に約7分", "remarks": null, "input_order": 10}, {"event_id": "2026-0001-E11", "case_id": "2026-0001", "day_offset": 0, "event_time": "20:15", "time_certainty_code": "REC", "event_type_code": "DEP", "content": null, "remarks": null, "input_order": 11}, {"event_id": "2026-0001-E12", "case_id": "2026-0001", "day_offset": 0, "event_time": "20:24", "time_certainty_code": "REC", "event_type_code": "HOSPA", "content": null, "remarks": null, "input_order": 12}], "decision": [{"decision_id": "2026-0001-D01", "case_id": "2026-0001", "event_id": "2026-0001-E05", "decision_time": "19:54", "decision_type_code": "TX", "decision_content": "VFに対し除細動を実施", "reason_code": "PROT", "reason_text": "心電図でVFを確認", "info_used": "I08", "action_taken": "除細動1回", "action_result_code": "DONE", "constraints_text": null}, {"decision_id": "2026-0001-D02", "case_id": "2026-0001", "event_id": "2026-0001-E06", "decision_time": "19:56", "decision_type_code": "SUP", "decision_content": "支援隊の要請", "reason_code": "SAFE", "reason_text": "階段が狭く3名では搬出とCPR継続が困難と判断", "info_used": "Q1050", "action_taken": "支援隊要請", "action_result_code": "DONE", "constraints_text": "人員不足"}, {"decision_id": "2026-0001-D03", "case_id": "2026-0001", "event_id": "2026-0001-E07", "decision_time": null, "decision_type_code": "MC", "decision_content": "特定行為の指示要請", "reason_code": "PROT", "reason_text": null, "info_used": "I03, I10", "action_taken": "MC医師へ要請し指示を受けた", "action_result_code": "DONE", "constraints_text": null}, {"decision_id": "2026-0001-D04", "case_id": "2026-0001", "event_id": "2026-0001-E09", "decision_time": "20:05", "decision_type_code": "DEP", "decision_content": "静脈路確保を中止し搬出を優先", "reason_code": "TIME", "reason_text": "2回失敗し、支援隊到着で搬出可能になったため", "info_used": null, "action_taken": "搬出開始", "action_result_code": "PART", "constraints_text": "時間的切迫"}, {"decision_id": "2026-0001-D05", "case_id": "2026-0001", "event_id": "2026-0001-E11", "decision_time": null, "decision_type_code": "DEST", "decision_content": "救命救急センターを選定", "reason_code": "PROT", "reason_text": "心原性CPA、地域の実施基準に該当", "info_used": "I03", "action_taken": "1回の照会で受入", "action_result_code": "DONE", "constraints_text": null}], "case_assignment": [{"case_id": "2026-0001", "assignment_role": "REVIEWER1", "user_id": "R-201"}, {"case_id": "2026-0001", "assignment_role": "REVIEWER2", "user_id": "R-305"}], "review_session": [{"review_session_id": 1, "case_id": "2026-0001", "session_role": "FIRST", "reviewer_id": "R-201", "criteria_version_id": "V-0.2", "situation_summary": "通報で反応なしの情報（I01）。接触時、呼吸なし・脈拍触知せず・VF（Q2020, Q3C30）。家族目撃・口頭指導CPRあり（Q3C10, Q3C20）。心筋梗塞の既往（I03）、DNARなし（I10）、服薬は確認できず（I04）。集合住宅4階で搬出困難（Q1050）、人員3名（Q6010）。", "status_code": "FIX", "review_date": "2026-10-05"}, {"review_session_id": 2, "case_id": "2026-0001", "session_role": "SECOND", "reviewer_id": "R-305", "criteria_version_id": "V-0.2", "situation_summary": null, "status_code": "FIX", "review_date": "2026-10-12"}], "review": [{"review_session_id": 1, "review_item_id": "V01", "rating_code": "B", "rating_at_submit": "B", "reference_rating": "B", "divergence_reason": null, "rationale": "主要情報は把握。服薬は確認できなかったが状況上やむを得ない", "improvement_item": null, "referenced_records": "I04", "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V02", "rating_code": "A", "rating_at_submit": "A", "reference_rating": "A", "divergence_reason": null, "rationale": "接触1分後に心電図評価", "improvement_item": null, "referenced_records": "E05", "viewpoint_code": "TIME", "good_practice_code": "Y", "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V03", "rating_code": "A", "rating_at_submit": "A", "reference_rating": "A", "divergence_reason": null, "rationale": null, "improvement_item": null, "referenced_records": null, "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V04", "rating_code": "A", "rating_at_submit": "A", "reference_rating": "A", "divergence_reason": null, "rationale": null, "improvement_item": null, "referenced_records": null, "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V05", "rating_code": "C", "rating_at_submit": "C", "reference_rating": "C_LOW", "divergence_reason": null, "rationale": "静脈路確保の試行で現場時間が延びた可能性。中止判断は当時の情報から合理的", "improvement_item": "試行回数と現場出発の判断目安を隊内で共有する", "referenced_records": "D04", "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V06", "rating_code": "C", "rating_at_submit": "C", "reference_rating": "C_LOW", "divergence_reason": null, "rationale": "現場滞在24分。搬出困難が主因。支援隊要請は接触3分後", "improvement_item": "搬出困難が予測される現場での早期の支援要請", "referenced_records": "D02, E06", "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V07", "rating_code": "A", "rating_at_submit": "A", "reference_rating": "A", "divergence_reason": null, "rationale": null, "improvement_item": null, "referenced_records": null, "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V08", "rating_code": "B", "rating_at_submit": "B", "reference_rating": "B", "divergence_reason": null, "rationale": "MC要請時刻が記録されておらず時間的評価ができない", "improvement_item": null, "referenced_records": "E07", "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V09", "rating_code": "B", "rating_at_submit": "B", "reference_rating": "B", "divergence_reason": null, "rationale": null, "improvement_item": null, "referenced_records": null, "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V10", "rating_code": "C", "rating_at_submit": "C", "reference_rating": "C_LOW", "divergence_reason": null, "rationale": "MC要請の時刻記録なし。静脈路の時刻が推定", "improvement_item": "処置・連絡の時刻を確実に記録する方法の整備", "referenced_records": "E07, E09", "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 1, "review_item_id": "V11", "rating_code": "B", "rating_at_submit": "B", "reference_rating": "A", "divergence_reason": "観点上はAだが、搬出中の圧迫の質を記録で確認できず「妥当」と言い切れないためB", "rationale": "階段搬出中の胸骨圧迫の質は記録から評価できない部分あり", "improvement_item": null, "referenced_records": "Q8020", "viewpoint_code": "TIME", "good_practice_code": null, "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V01", "rating_code": "B", "rating_at_submit": "B", "rationale": "服薬未確認", "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V02", "rating_code": "A", "rating_at_submit": "A", "rationale": null, "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V03", "rating_code": "A", "rating_at_submit": "A", "rationale": null, "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V04", "rating_code": "A", "rating_at_submit": "A", "rationale": null, "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V05", "rating_code": "B", "rating_at_submit": "B", "rationale": "中止判断は合理的", "discussion_code": "KEEP"}, {"review_session_id": 2, "review_item_id": "V06", "rating_code": "C", "rating_at_submit": "C", "rationale": "現場24分", "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V07", "rating_code": "A", "rating_at_submit": "A", "rationale": null, "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V08", "rating_code": "B", "rating_at_submit": "B", "rationale": null, "discussion_code": null}, {"review_session_id": 2, "review_item_id": "V09", "rating_code": "A", "rating_at_submit": "A", "rationale": null, "discussion_code": "KEEP"}, {"review_session_id": 2, "review_item_id": "V10", "rating_code": "D", "rating_at_submit": "D", "rationale": "時刻記録の欠落", "discussion_code": "KEEP"}, {"review_session_id": 2, "review_item_id": "V11", "rating_code": "B", "rating_at_submit": "B", "rationale": null, "discussion_code": null}], "review_check": [{"review_session_id": 1, "checkpoint_id": "V01-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V01-2", "answer_code": "PART", "memo": "服薬未確認（I04）"}, {"review_session_id": 1, "checkpoint_id": "V01-3", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V02-1", "answer_code": "MET", "memo": "接触1分後に心電図（E04→E05）"}, {"review_session_id": 1, "checkpoint_id": "V02-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V02-3", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V03-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V03-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V03-3", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V04-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V04-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V05-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V05-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V05-3", "answer_code": "NOT", "memo": "静脈路2回試行で現場時間延長の可能性（D04）"}, {"review_session_id": 1, "checkpoint_id": "V06-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V06-2", "answer_code": "NOT", "memo": "現場滞在24分（E03→E11）"}, {"review_session_id": 1, "checkpoint_id": "V06-3", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V07-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V07-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V08-1", "answer_code": "PART", "memo": "MC要請時刻の記録なし（E07）"}, {"review_session_id": 1, "checkpoint_id": "V08-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V09-1", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V09-2", "answer_code": "NA", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V09-3", "answer_code": "PART", "memo": "支援要請は接触3分後（D02）"}, {"review_session_id": 1, "checkpoint_id": "V10-1", "answer_code": "NOT", "memo": "E07時刻不明、E09推定"}, {"review_session_id": 1, "checkpoint_id": "V10-2", "answer_code": "PART", "memo": "D03の理由欄空欄"}, {"review_session_id": 1, "checkpoint_id": "V10-3", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V11-1", "answer_code": "INSUF", "memo": "搬出中の圧迫の質は記録なし"}, {"review_session_id": 1, "checkpoint_id": "V11-2", "answer_code": "MET", "memo": null}, {"review_session_id": 1, "checkpoint_id": "V11-3", "answer_code": "MET", "memo": null}], "cause": [{"cause_id": "2026-0001-C01", "case_id": "2026-0001", "review_session_id": 1, "review_item_id": "V06", "cause_category_code": "C05", "factor_level_code": "ORG", "cause_detail": "搬出困難が予測される現場での支援要請の基準・タイミングが定められていない", "certainty_code": "PROB"}, {"cause_id": "2026-0001-C02", "case_id": "2026-0001", "review_session_id": 1, "review_item_id": "V05", "cause_category_code": "C02", "factor_level_code": "TEAM", "cause_detail": "静脈路確保の試行回数と中止の目安が隊内で共有されていない", "certainty_code": "PROB"}, {"cause_id": "2026-0001-C03", "case_id": "2026-0001", "review_session_id": 1, "review_item_id": "V10", "cause_category_code": "C04", "factor_level_code": "ORG", "cause_detail": "処置・連絡時刻を記録する手段が隊員の記憶に依存している", "certainty_code": "SURE"}], "improvement": [{"improvement_id": "2026-0001-P01", "case_id": "2026-0001", "cause_id": "2026-0001-C01", "improvement_category_code": "P04", "improvement_content": "搬出困難事案の早期支援要請基準を活動要領に追加", "department_text": "救急企画係", "due_date": "2027-03-31", "status_code": "IP", "done_date": null, "effect_check_method": "改訂後6か月の同種症例で要請時点を確認", "effect_check_due": "2027-09-30", "effect_result_code": "PEND", "recurrence_code": "OBS"}, {"improvement_id": "2026-0001-P02", "case_id": "2026-0001", "cause_id": "2026-0001-C02", "improvement_category_code": "P02", "improvement_content": "CPA対応の想定訓練で静脈路の中止判断を共有", "department_text": "所属救急隊", "due_date": "2026-10-31", "status_code": "DONE", "done_date": "2026-10-30", "effect_check_method": "次回同種症例の現場時間を確認", "effect_check_due": "2027-04-30", "effect_result_code": "PEND", "recurrence_code": "OBS"}, {"improvement_id": "2026-0001-P03", "case_id": "2026-0001", "cause_id": "2026-0001-C03", "improvement_category_code": "P05", "improvement_content": "時刻記録用の簡易タイマー・記録票の導入を検討", "department_text": "救急企画係", "due_date": "2026-12-31", "status_code": "NS", "done_date": null, "effect_check_method": null, "effect_check_due": null, "effect_result_code": null, "recurrence_code": null}], "audit_log": []};
+const BUILD = {"version": "0.2.0", "commit": "19aa7b5", "date": "2026-11-12"};
+
+</script>
+<script>
+// 業務ルール（app/logic.py と同じ規則。変更するときは両方を直す）
+"use strict";
+const PROGRESS = { S1: "活動隊入力中", S2: "入力完了", S3: "一次検証中", S4: "一次検証確定", S5: "上位検証中", S6: "改善策実施中", S7: "完了" };
+const ROLES = { CREW: "活動隊", REVIEWER: "一次検証担当", SUPERVISOR: "上位検証担当", SYSADMIN: "システム管理者" };
+const REF_LABEL = { A: "A", B: "B", C_LOW: "C以下", E: "E", UNANSWERED: "観点未回答", NONE: "（観点なし）" };
+const UNITS = { "UNIT-01": "第1救急隊", "UNIT-02": "第2救急隊", "UNIT-03": "第3救急隊", "DEPT-01": "救急担当部署", "DEPT-02": "情報システム担当" };
+const USERS = [
+  { user_id: "U-101", full_name: "デモ隊員A", unit_id: "UNIT-01", roles: ["CREW"] },
+  { user_id: "U-102", full_name: "デモ隊員B", unit_id: "UNIT-02", roles: ["CREW"] },
+  { user_id: "R-201", full_name: "デモ隊長C", unit_id: "UNIT-02", roles: ["REVIEWER"] },
+  { user_id: "R-305", full_name: "デモ指導救命士D", unit_id: "UNIT-03", roles: ["REVIEWER"] },
+  { user_id: "S-401", full_name: "デモ担当E", unit_id: "DEPT-01", roles: ["SUPERVISOR"] },
+  { user_id: "A-901", full_name: "デモ管理者F", unit_id: "DEPT-02", roles: ["SYSADMIN"] },
+];
+
+const L = {
+  label(set, code) {
+    const c = (MASTERS.choices[set] || []).find(x => x[0] === code);
+    return c ? c[1] : (code || "");
+  },
+  applies(item, cat) { return item.applicable.includes("ALL") || item.applicable.includes(cat); },
+
+  // 症例区分と前の回答から、表示する質問を決める（Excel 03 の「表示」列）
+  visibleQuestions(cat, codes) {
+    const vis = {};
+    for (const q of MASTERS.questions) {
+      let ok = L.applies(q, cat);
+      if (ok && q.cond_question_id) ok = !!vis[q.cond_question_id] && q.show_if.includes(codes[q.cond_question_id]);
+      vis[q.question_id] = ok;
+    }
+    return vis;
+  },
+
+  // 時刻順。時刻不明は直前に入力したイベントの直後（Excel 05 の並び順キー）
+  sortEvents(evs) {
+    let last = 0;
+    const list = [...evs].sort((a, b) => a.input_order - b.input_order);
+    for (const e of list) {
+      let key;
+      if (e.event_time) {
+        const [h, m] = e.event_time.split(":").map(Number);
+        key = (e.day_offset || 0) + (h * 60 + m) / 1440;
+      } else key = last;
+      e._key = key + e.input_order * 1e-7;
+      last = Math.max(last, e._key);
+    }
+    return list.sort((a, b) => a._key - b._key);
+  },
+  DURATIONS: [["覚知→現場到着", "CALL", "ARR"], ["現場到着→傷病者接触", "ARR", "CONT"], ["傷病者接触→現場出発", "CONT", "DEP"],
+    ["現場到着→現場出発（現場滞在）", "ARR", "DEP"], ["現場出発→搬送先到着", "DEP", "HOSPA"], ["覚知→搬送先到着", "CALL", "HOSPA"]],
+  durations(evs) {
+    const first = {};
+    [...evs].sort((a, b) => a.input_order - b.input_order).forEach(e => { if (!first[e.event_type_code]) first[e.event_type_code] = e; });
+    const mins = e => { const [h, m] = e.event_time.split(":").map(Number); return (e.day_offset || 0) * 1440 + h * 60 + m; };
+    return L.DURATIONS.map(([lab, a, b]) => {
+      const ea = first[a], eb = first[b];
+      return [lab, ea && eb && ea.event_time && eb.event_time ? `${mins(eb) - mins(ea)}分` : "算出不可（時刻未入力）"];
+    });
+  },
+
+  // 確認観点の回答から参考評価（検証基準書3章）
+  referenceRating(answers) {
+    if (!answers.length) return "NONE";
+    if (answers.some(a => !a)) return "UNANSWERED";
+    const n = answers.filter(a => a !== "NA");
+    if (!n.length) return "A";
+    if (n.filter(a => a === "INSUF").length * 2 >= n.length) return "E";
+    if (n.includes("NOT")) return "C_LOW";
+    if (n.includes("PART")) return "B";
+    return "A";
+  },
+  differs(ref, rating) {
+    if (!rating || !["A", "B", "C_LOW", "E"].includes(ref)) return false;
+    return !((ref === "C_LOW" && ["C", "D"].includes(rating)) || ref === rating);
+  },
+  agreement(r1, r2) {
+    if (!r1 || !r2) return null;
+    if (r1 === r2) return "完全一致";
+    if (r1 === "E" || r2 === "E") return "E（評価困難）を含む不一致";
+    return Math.abs("ABCD".indexOf(r1) - "ABCD".indexOf(r2)) === 1 ? "1段階差" : "2段階以上差";
+  },
+
+  // 権限（決定事項W03・W04）
+  assignments(db, cid) {
+    const a = {};
+    db.case_assignment.filter(x => x.case_id === cid).forEach(x => { a[x.assignment_role] = x.user_id; });
+    return a;
+  },
+  canView(db, u, c) {
+    if (u.roles.includes("SUPERVISOR")) return true;
+    if (u.roles.includes("CREW") && c.crew_unit_id === u.unit_id) return true;
+    if (u.roles.includes("REVIEWER") && Object.values(L.assignments(db, c.case_id)).includes(u.user_id)) return true;
+    return false;
+  },
+  canEditActivity(u, c) { return u.roles.includes("CREW") && c.crew_unit_id === u.unit_id && c.progress_code === "S1"; },
+
+  // 活動記録の提出前チェック（Excel 03〜06 のチェック列）
+  activityProblems(db, c) {
+    const cid = c.case_id, cat = c.case_category_code, probs = [];
+    const ans = {};
+    db.answer.concat(db.self_evaluation).filter(r => r.case_id === cid).forEach(r => { ans[r.question_id] = r; });
+    const codes = {}; Object.values(ans).forEach(r => { codes[r.question_id] = r.answer_code; });
+    const vis = L.visibleQuestions(cat, codes);
+    for (const q of MASTERS.questions) {
+      const a = ans[q.question_id];
+      if (!vis[q.question_id]) {
+        if (a && (a.answer_code || a.note_text)) probs.push(["activity", q.question_id, `対象外になった質問に回答が残っています：${q.question_text}`, "warn"]);
+        continue;
+      }
+      if (!a || !a.answer_code) { if (q.required) probs.push(["activity", q.question_id, `必須の質問が未回答：${q.question_text}`, "error"]); continue; }
+      if (q.note_if.includes(a.answer_code) && !(a.note_text || "").trim()) probs.push(["activity", q.question_id, `補足欄に内容を記述してください：${q.question_text}`, "error"]);
+    }
+    const infos = {}; db.info_record.filter(r => r.case_id === cid).forEach(r => { infos[r.info_item_id] = r; });
+    for (const it of MASTERS.info_items) {
+      if (!L.applies(it, cat)) continue;
+      const r = infos[it.info_item_id], aw = r && r.awareness_code;
+      if (!aw) { if (it.required) probs.push(["info", it.info_item_id, `情報把握が未回答：${it.item_name}`, "error"]); continue; }
+      if (aw === "TRIED" && !(r.note_text || "").trim()) probs.push(["info", it.info_item_id, `確認できなかった理由を記入：${it.item_name}`, "error"]);
+      if (["PRE", "SCENE", "TRANS"].includes(aw)) {
+        if (!r.source_code) probs.push(["info", it.info_item_id, `情報源を選択：${it.item_name}`, "error"]);
+        if (!r.reflection_code) probs.push(["info", it.info_item_id, `方針への反映を選択：${it.item_name}`, "error"]);
+        if (r.reflection_code === "NOR" && !(r.note_text || "").trim()) probs.push(["info", it.info_item_id, `反映しなかった理由を記入：${it.item_name}`, "error"]);
+      }
+    }
+    const evs = db.event.filter(e => e.case_id === cid);
+    if (!evs.length) probs.push(["events", "", "時系列が1件も入力されていません", "error"]);
+    evs.forEach(e => { if (e.event_time && e.time_certainty_code === "UNK") probs.push(["events", e.event_id, `${e.event_id}：時刻があるのに確実性が「不明」です`, "warn"]); });
+    db.decision.filter(d => d.case_id === cid).forEach(d => { if (!d.action_result_code) probs.push(["decisions", d.decision_id, `${d.decision_id}：活動結果を選択`, "error"]); });
+    return probs;
+  },
+
+  reviewItems(c) { return MASTERS.review_items.filter(x => L.applies(x, c.case_category_code)); },
+
+  // 一次検証の提出・確定前チェック（Excel 07 のチェック列）
+  reviewProblems(db, c, sess, first) {
+    const revs = {}; db.review.filter(r => r.review_session_id === sess.review_session_id).forEach(r => { revs[r.review_item_id] = r; });
+    const chks = {}; db.review_check.filter(r => r.review_session_id === sess.review_session_id).forEach(r => { chks[r.checkpoint_id] = r; });
+    const probs = [], t = s => (s || "").trim();
+    if (first && !t(sess.situation_summary)) probs.push(["", "当時把握していた情報の要約を記入してください（後知恵バイアス対策）"]);
+    for (const x of L.reviewItems(c)) {
+      const v = x.review_item_id, r = revs[v], g = r && r.rating_code;
+      if (!g) { probs.push([v, `${v} ${x.item_name}：未評価`]); continue; }
+      if (!first) continue;
+      for (const cp of x.checkpoints) {
+        const a = chks[cp.checkpoint_id];
+        if (!a || !a.answer_code) probs.push([v, `${cp.checkpoint_id}：確認観点が未回答`]);
+        else if (["NOT", "PART", "INSUF"].includes(a.answer_code) && !t(a.memo)) probs.push([v, `${cp.checkpoint_id}：メモに根拠を記入`]);
+      }
+      const ref = L.referenceRating(x.checkpoints.map(cp => (chks[cp.checkpoint_id] || {}).answer_code));
+      if (L.differs(ref, g) && !t(r.divergence_reason)) probs.push([v, `${v}：参考評価（${REF_LABEL[ref]}）と異なる理由を記入`]);
+      if (["C", "D"].includes(g) && !(t(r.rationale) && t(r.improvement_item) && t(r.referenced_records))) probs.push([v, `${v}：C・Dは根拠・改善事項・参照記録IDが必須`]);
+      if (g === "E" && !t(r.rationale)) probs.push([v, `${v}：評価困難の理由（不足資料）を根拠欄に`]);
+      if (!r.viewpoint_code) probs.push([v, `${v}：評価視点を選択`]);
+      if (r.viewpoint_code === "OUTC" && !t(r.rationale)) probs.push([v, `${v}：結果を考慮した理由を根拠欄に`]);
+      if (r.good_practice_code === "Y" && !t(r.rationale)) probs.push([v, `${v}：良好事例の内容を根拠欄に`]);
+    }
+    return probs;
+  },
+};
+if (typeof module !== "undefined") module.exports = { L, PROGRESS, ROLES, REF_LABEL, USERS, UNITS };
+
+</script>
+<script>
+// 画面・保存（デモ版 1ファイル版）。データはこのブラウザの中（localStorage）だけに保存する。
+"use strict";
+const KEY = "jigo-kensho-demo-v1", UKEY = "jigo-kensho-demo-user";
+const TABLES = ["case_record", "answer", "self_evaluation", "info_record", "event", "decision", "case_assignment",
+  "review_session", "review", "review_check", "cause", "improvement", "audit_log"];
+let DB, ME = null, FLASH = [], STORAGE_OK = true;
+
+// ------------------------------------------------------------ 保存
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function load() {
+  try { const s = localStorage.getItem(KEY); DB = s ? JSON.parse(s) : clone(SAMPLE_DB); }
+  catch (e) { STORAGE_OK = false; DB = clone(SAMPLE_DB); }
+  TABLES.forEach(t => { if (!DB[t]) DB[t] = []; });
+  try { const u = localStorage.getItem(UKEY); ME = USERS.find(x => x.user_id === u) || null; } catch (e) { ME = null; }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { STORAGE_OK = false; } }
+function setMe(u) { ME = u; try { u ? localStorage.setItem(UKEY, u.user_id) : localStorage.removeItem(UKEY); } catch (e) { } }
+function now() { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+function today() { return now().slice(0, 10); }
+function audit(action, table, key, caseId, before, after, detail) {
+  DB.audit_log.push({ log_id: DB.audit_log.length + 1, occurred_at: now(), user_id: ME ? ME.user_id : null, action, target_table: table || null,
+    target_key: key || null, case_id: caseId || null, before_data: before ? JSON.stringify(before) : null, after_data: after ? JSON.stringify(after) : null, detail: detail || null });
+}
+function flash(m) { FLASH.push(m); }
+
+// ------------------------------------------------------------ 表示の部品
+const h = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const lab = (set, code) => L.label(set, code);
+const nz = v => { v = (v == null ? "" : String(v)).trim(); return v || null; };
+function options(set, val, blank = true) {
+  return (blank ? "<option value=''></option>" : "") + (MASTERS.choices[set] || []).map(([c, l]) => `<option value="${h(c)}" ${c === val ? "selected" : ""}>${h(l)}</option>`).join("");
+}
+function radios(name, set, val, extra = "") {
+  return `<div class="opts">${(MASTERS.choices[set] || []).map(([c, l]) => `<label><input type="radio" name="${h(name)}" value="${h(c)}" ${c === val ? "checked" : ""} ${extra}>${h(l)}</label>`).join("")}</div>`;
+}
+const pill = c => `<span class="pill p-${c.progress_code}">${PROGRESS[c.progress_code]}</span>`;
+const getCase = id => DB.case_record.find(c => c.case_id === id);
+const sessions = cid => { const o = {}; DB.review_session.filter(s => s.case_id === cid).forEach(s => { o[s.session_role] = s; }); return o; };
+const revsOf = sid => { const o = {}; DB.review.filter(r => r.review_session_id === sid).forEach(r => { o[r.review_item_id] = r; }); return o; };
+function setProgress(c, p, detail) { audit("STATUS", "case_record", c.case_id, c.case_id, { progress: c.progress_code }, { progress: p }, detail); c.progress_code = p; }
+function nextNo(list, prefix) { const used = new Set(list.map(x => parseInt(x.slice(-2), 10))); let k = 1; while (used.has(k)) k++; return `${prefix}${String(k).padStart(2, "0")}`; }
+
+// ------------------------------------------------------------ 画面
+function layout(body) {
+  const nav = ME ? `<header><span class="brand">事後検証支援</span>
+    <a href="#/">ホーム</a><a href="#/cases">症例一覧</a>
+    ${ME.roles.includes("CREW") ? '<a href="#/new">症例登録</a>' : ""}
+    ${ME.roles.includes("SUPERVISOR") ? '<a href="#/assign">検証担当の割当</a><a href="#/export">CSV出力</a>' : ""}
+    ${ME.roles.some(r => ["SUPERVISOR", "REVIEWER"].includes(r)) ? '<a href="#/stats">集計</a>' : ""}
+    ${ME.roles.some(r => ["SUPERVISOR", "SYSADMIN"].includes(r)) ? '<a href="#/audit">操作履歴</a>' : ""}
+    ${ME.roles.includes("SYSADMIN") ? '<a href="#/admin">管理</a>' : ""}
+    <a href="#/backup">データ</a>
+    <span class="who">${h(ME.user_id)}／${h(UNITS[ME.unit_id])}／${ME.roles.map(r => ROLES[r]).join(" ")}</span>
+    <button type="button" data-click="logout">ログアウト</button></header>` : "";
+  const warn = STORAGE_OK ? "" : "<div class='flash'>このブラウザではデータを保存できません。画面を閉じると入力内容は消えます。</div>";
+  const msgs = FLASH.map(m => `<div class="flash">${h(m)}</div>`).join(""); FLASH = [];
+  return `<div class="demo">デモ版（1ファイル版 ${h(BUILD.version)}）：架空症例のみで使用してください。データはこの端末のブラウザの中だけに保存されます。</div>${nav}<main>${warn}${msgs}${body}</main>`;
+}
+
+function pageLogin() {
+  return `<h1>ログイン（デモ用）</h1>
+  <p class="muted">利用者を選ぶだけでログインします（本番は組織の認証基盤と連携）。役割ごとに見える画面と操作が変わります。1台のブラウザで役割を切り替えながら、活動隊→検証者→救急担当部署の流れを試せます。</p>
+  <form data-act="login"><table><tr><th></th><th>利用者ID</th><th>名前（架空）</th><th>所属</th><th>役割</th></tr>
+  ${USERS.map((u, i) => `<tr><td><input type="radio" name="user_id" value="${u.user_id}" id="u${i}"></td><td><label for="u${i}">${u.user_id}</label></td><td>${h(u.full_name)}</td><td>${h(UNITS[u.unit_id])}</td><td>${u.roles.map(r => ROLES[r]).join(" ")}</td></tr>`).join("")}
+  </table><button class="btn">ログイン</button></form>`;
+}
+
+function visibleCases() { return DB.case_record.filter(c => L.canView(DB, ME, c)).sort((a, b) => b.case_id.localeCompare(a.case_id)); }
+
+function pageHome() {
+  const todo = [];
+  for (const c of visibleCases()) {
+    const a = L.assignments(DB, c.case_id), p = c.progress_code;
+    if (ME.roles.includes("CREW") && c.crew_unit_id === ME.unit_id && p === "S1") todo.push([c, "活動記録の入力・提出", `#/case/${c.case_id}/activity`]);
+    if (a.REVIEWER1 === ME.user_id && p === "S3") todo.push([c, "一次検証", `#/case/${c.case_id}/review`]);
+    if (a.REVIEWER2 === ME.user_id && p === "S3") todo.push([c, "二重評価", `#/case/${c.case_id}/review2`]);
+    if (ME.roles.includes("SUPERVISOR") && p === "S2") todo.push([c, "検証担当の割当", "#/assign"]);
+    if (ME.roles.includes("SUPERVISOR") && ["S5", "S6"].includes(p)) todo.push([c, "原因分析・改善策", `#/case/${c.case_id}/upper`]);
+  }
+  const overdue = ME.roles.includes("SUPERVISOR") ? DB.improvement.filter(p => p.due_date && p.due_date < today() && !["DONE", "STOP", "NN"].includes(p.status_code)) : [];
+  return `<h1>あなたの作業</h1>${todo.length ? `<table><tr><th>症例</th><th>状態</th><th>作業</th></tr>${todo.map(([c, w, l]) => `<tr><td>${c.case_id}</td><td>${pill(c)}</td><td><a href="${l}">${w}</a></td></tr>`).join("")}</table>` : "<p class='muted'>いま対応が必要な症例はありません。</p>"}
+  ${overdue.length ? `<h2>期限を過ぎた改善策</h2><table><tr><th>改善ID</th><th>内容</th><th>担当</th><th>期限</th></tr>${overdue.map(p => `<tr><td><a href="#/case/${p.case_id}/upper">${p.improvement_id}</a></td><td>${h(p.improvement_content)}</td><td>${h(p.department_text)}</td><td class="err">${p.due_date}</td></tr>`).join("")}</table>` : ""}`;
+}
+
+function pageCases(q) {
+  let rows = visibleCases();
+  if (q.cat) rows = rows.filter(c => c.case_category_code === q.cat);
+  if (q.prog) rows = rows.filter(c => c.progress_code === q.prog);
+  return `<h1>症例一覧</h1><form data-act="filter" class="noprint">症例区分 <select name="cat"><option value="">すべて</option>${options("L_CASECAT", q.cat, false)}</select>
+  状態 <select name="prog"><option value="">すべて</option>${Object.entries(PROGRESS).map(([k, v]) => `<option value="${k}" ${q.prog === k ? "selected" : ""}>${v}</option>`).join("")}</select> <button class="btn sub">絞り込み</button></form>
+  <table><tr><th>症例ID</th><th>年度</th><th>発生年月</th><th>症例区分</th><th>年齢区分</th><th>状態</th></tr>
+  ${rows.map(c => `<tr><td><a href="#/case/${c.case_id}/view">${c.case_id}</a></td><td>${c.fiscal_year}</td><td>${h(c.occurrence_month)}</td><td>${h(lab("L_CASECAT", c.case_category_code))}</td><td>${h(lab("L_AGE", c.age_group_code))}</td><td>${pill(c)}</td></tr>`).join("") || "<tr><td colspan='6' class='muted'>表示できる症例はありません</td></tr>"}</table>`;
+}
+
+function pageNew() {
+  const q = (name, set, title, req = true) => `<div class="q"><div class="qt">${req ? '<span class="tag req">必須</span>' : ""}${title}</div>${radios(name, set, null)}</div>`;
+  return `<h1>症例登録</h1><div class="box warnbox">氏名・生年月日・住所・具体的な出場先・隊員氏名は入力しません。症例IDは自動で付きます（年度-連番）。</div>
+  <form data-act="caseNew">
+  <div class="q"><div class="qt"><span class="tag req">必須</span>年度</div><input type="number" name="fiscal_year" value="${new Date().getFullYear()}" min="2000" max="2100"></div>
+  <div class="q"><div class="qt"><span class="tag req">必須</span>発生年月 <span class="muted">（日は入力しない）</span></div><input type="month" name="occurrence_month"></div>
+  ${q("case_category_code", "L_CASECAT", "症例区分 <span class='muted'>（質問の分岐に使います。複数該当時は主たる区分）</span>")}
+  ${q("age_group_code", "L_AGE", "年齢区分")}${q("sex_code", "L_SEX", "性別（検証上必要な場合のみ）", false)}
+  ${q("etiology_code", "L_ETIOL", "外因・内因区分")}${q("review_target_code", "L_TARGET", "検証対象区分")}
+  <div class="bar"><button class="btn">登録して活動記録へ</button></div></form>`;
+}
+
+function caseNav(c, tab) {
+  const t = [["view", "記録の確認"], ["activity", "活動記録"], ["info", "情報把握"], ["events", "時系列"], ["decisions", "判断・活動"], ["submit", "提出前チェック"], ["review", "一次検証"], ["review2", "二重評価"]];
+  if (ME.roles.includes("SUPERVISOR")) t.push(["upper", "原因分析・改善策"]);
+  return `<h1>症例 ${c.case_id} ${pill(c)}</h1><div class="tabs">${t.map(([k, v]) => `<a href="#/case/${c.case_id}/${k}" class="${k === tab ? "on" : ""}">${v}</a>`).join("")}</div>`;
+}
+
+function caseDoc(c) {
+  const cid = c.case_id, ans = {}, selfs = {};
+  DB.answer.filter(r => r.case_id === cid).forEach(r => { ans[r.question_id] = r; });
+  DB.self_evaluation.filter(r => r.case_id === cid).forEach(r => { selfs[r.question_id] = r; });
+  const codes = {}; Object.values({ ...ans, ...selfs }).forEach(r => { codes[r.question_id] = r.answer_code; });
+  const vis = L.visibleQuestions(c.case_category_code, codes), lines = [], selfLines = [];
+  for (const q of MASTERS.questions) {
+    if (!vis[q.question_id]) continue;
+    const r = q.record_category === "自己評価" ? selfs[q.question_id] : ans[q.question_id];
+    const val = !r || !r.answer_code ? "（未回答）" : (r.answer_code === "W" ? "" : lab(q.choice_set_id, r.answer_code));
+    const text = [val, r && r.note_text].filter(Boolean).join("／") || "（記述なし）";
+    (q.record_category === "自己評価" ? selfLines : lines).push({ id: q.question_id, cat: q.record_category, q: q.question_text, a: text });
+  }
+  const infos = {}; DB.info_record.filter(r => r.case_id === cid).forEach(r => { infos[r.info_item_id] = r; });
+  const infoLines = MASTERS.info_items.filter(it => L.applies(it, c.case_category_code)).map(it => {
+    const r = infos[it.info_item_id] || {};
+    const parts = [lab("L_AWARE", r.awareness_code) || "（未回答）"];
+    if (r.acquired_time) parts.push(r.acquired_time);
+    if (r.source_code) parts.push("情報源：" + lab("L_SOURCE", r.source_code));
+    if (r.reflection_code) parts.push("方針への反映：" + lab("L_REFLECT", r.reflection_code));
+    if (r.note_text) parts.push(r.note_text);
+    return { id: it.info_item_id, name: it.item_name, text: parts.join("／") };
+  });
+  const events = L.sortEvents(DB.event.filter(e => e.case_id === cid));
+  return { lines, selfLines, infoLines, events, durations: L.durations(events), decisions: DB.decision.filter(d => d.case_id === cid).sort((a, b) => a.decision_id.localeCompare(b.decision_id)) };
+}
+
+function recordHTML(d, showSelf) {
+  return `<h3>活動経過（時刻順）</h3>${d.events.map(e => `<div>${e.event_time || "時刻不明"}${e.day_offset ? `（+${e.day_offset}日）` : ""}${["EST", "MEM"].includes(e.time_certainty_code) ? `（${lab("L_TCERT", e.time_certainty_code)}）` : ""}　${h(lab("L_EVENT", e.event_type_code))}${e.content ? "：" + h(e.content) : ""} <span class="muted">${e.event_id.slice(-3)}</span></div>`).join("") || "<div class='muted'>（時系列が未入力）</div>"}
+  <div class="muted">${d.durations.map(([l, v]) => `${l} ${v}`).join("／")}</div>
+  <h3>活動隊の記録</h3>${d.lines.map(x => `<div>［${x.cat}］${h(x.q)}：${h(x.a)} <span class="muted">${x.id}</span></div>`).join("")}
+  <h3>情報の把握状況</h3>${d.infoLines.map(x => `<div>${h(x.name)}：${h(x.text)} <span class="muted">${x.id}</span></div>`).join("")}
+  <h3>判断と理由</h3>${d.decisions.map(x => `<div>${x.decision_id.slice(-3)}（${x.decision_time || "時点未記録"}・${h(lab("L_DECTYPE", x.decision_type_code) || "（未入力）")}）：${h(x.decision_content)}。理由：${h(lab("L_REASON", x.reason_code))}${x.reason_text ? `（${h(x.reason_text)}）` : ""}。実施：${h(x.action_taken || "（未入力）")}→${h(lab("L_RESULT", x.action_result_code) || "（未入力）")}${x.constraints_text ? "。制約：" + h(x.constraints_text) : ""}</div>`).join("") || "<div class='muted'>（判断の記録なし）</div>"}
+  ${showSelf ? `<h3>自己評価・振り返り</h3>${d.selfLines.map(x => `<div>${h(x.q)}：${h(x.a)}</div>`).join("")}` : ""}`;
+}
+
+function pageView(c) {
+  const d = caseDoc(c), a = L.assignments(DB, c.case_id), ss = sessions(c.case_id), first = ss.FIRST;
+  let rev = "";
+  if (first && ["SUBMIT", "FIX"].includes(first.status_code)) {
+    const items = {}; L.reviewItems(c).forEach(x => { items[x.review_item_id] = x; });
+    const rs = DB.review.filter(r => r.review_session_id === first.review_session_id).sort((p, q) => p.review_item_id.localeCompare(q.review_item_id));
+    rev = `<h2>一次検証結果${first.status_code !== "FIX" ? "（未確定）" : ""}</h2><p><b>当時把握していた情報の要約：</b>${h(first.situation_summary || "（未入力）")}</p>
+    <table><tr><th>項目</th><th>評価</th><th>参考評価</th><th>根拠・改善事項</th></tr>${rs.map(r => `<tr><td>${r.review_item_id} ${h((items[r.review_item_id] || {}).item_name)}</td><td><b>${r.rating_code || "（未評価）"}</b>${r.good_practice_code === "Y" ? "<br><span class='ok'>良好事例</span>" : ""}</td><td>${REF_LABEL[r.reference_rating] || ""}</td><td>${r.rationale ? "根拠：" + h(r.rationale) : ""}${r.improvement_item ? "<br>改善事項：" + h(r.improvement_item) : ""}${r.divergence_reason ? `<br><span class="muted">参考評価と異なる理由：${h(r.divergence_reason)}</span>` : ""}</td></tr>`).join("")}</table>`;
+  }
+  const causes = DB.cause.filter(x => x.case_id === c.case_id), imps = DB.improvement.filter(x => x.case_id === c.case_id);
+  return caseNav(c, "view") + `<p class="muted">${h(lab("L_CASECAT", c.case_category_code))}／${h(lab("L_AGE", c.age_group_code))}／${h(lab("L_ETIOL", c.etiology_code))}／${c.fiscal_year}年度（${h(c.occurrence_month)}）／質問の版 ${c.question_version_id}${c.criteria_version_id ? "／評価基準の版 " + c.criteria_version_id : ""}${a.REVIEWER1 ? `／一次検証 ${a.REVIEWER1}${a.REVIEWER2 ? "・第二 " + a.REVIEWER2 : ""}` : ""}
+  <button class="btn sub noprint" type="button" data-click="print">印刷・PDF保存</button></p>
+  <div class="box">${recordHTML(d, true)}</div>${rev}
+  ${causes.length ? `<h2>原因分析</h2><table><tr><th>ID</th><th>対象</th><th>原因分類</th><th>要因</th><th>詳細</th><th>確実性</th></tr>${causes.map(x => `<tr><td>${x.cause_id}</td><td>${x.review_item_id}</td><td>${h(lab("L_CAUSE", x.cause_category_code))}</td><td>${h(lab("L_LEVEL", x.factor_level_code))}</td><td>${h(x.cause_detail)}</td><td>${h(lab("L_CERT", x.certainty_code))}</td></tr>`).join("")}</table>` : ""}
+  ${imps.length ? `<h2>改善策</h2><table><tr><th>ID</th><th>区分</th><th>内容</th><th>担当</th><th>期限</th><th>状況</th><th>効果</th></tr>${imps.map(p => `<tr><td>${p.improvement_id}</td><td>${h(lab("L_IMPCAT", p.improvement_category_code))}</td><td>${h(p.improvement_content)}</td><td>${h(p.department_text)}</td><td>${h(p.due_date)}</td><td>${h(lab("L_STATUS", p.status_code))}</td><td>${h(lab("L_EFFECT", p.effect_result_code))}</td></tr>`).join("")}</table>` : ""}
+  <p class="muted">この画面は入力内容を並べたものです。入力されていない情報は補っていません。</p>`;
+}
+
+function fs(editable, inner) { return `<fieldset ${editable ? "" : "disabled"} style="border:0;padding:0;margin:0">${inner}</fieldset>`; }
+
+function pageActivity(c) {
+  const ed = L.canEditActivity(ME, c), ans = {};
+  DB.answer.concat(DB.self_evaluation).filter(r => r.case_id === c.case_id).forEach(r => { ans[r.question_id] = r; });
+  const codes = {}; Object.values(ans).forEach(r => { codes[r.question_id] = r.answer_code; });
+  const vis = L.visibleQuestions(c.case_category_code, codes);
+  let html = "", sec = null;
+  for (const q of MASTERS.questions) {
+    if (!L.applies(q, c.case_category_code)) continue;
+    if (q.section !== sec) { sec = q.section; html += `<h2>${h(sec)}</h2>`; }
+    const a = ans[q.question_id] || {};
+    html += `<div class="q ${vis[q.question_id] ? "" : "hidden"}" data-qid="${q.question_id}" data-cond="${q.cond_question_id || ""}" data-show="${q.show_if.join("|")}" data-note="${q.note_if.join("|")}">
+    <div class="qt">${q.required ? '<span class="tag req">必須</span>' : ""}<span class="tag">${q.record_category}</span>${h(q.question_text)} <span class="muted">${q.question_id}</span></div>
+    ${q.help_text ? `<div class="muted">${h(q.help_text)}</div>` : ""}
+    <div class="opts">${MASTERS.choices[q.choice_set_id].map(([code, l]) => `<label><input type="radio" name="q_${q.question_id}" value="${h(code)}" ${a.answer_code === code ? "checked" : ""}>${h(l)}</label>`).join("")}<label class="muted"><input type="radio" name="q_${q.question_id}" value="" ${!a.answer_code ? "checked" : ""}>未回答</label></div>
+    <textarea name="n_${q.question_id}" placeholder="補足・自由記述（個人を特定する情報は書かない）">${h(a.note_text)}</textarea><div class="notehint err" hidden>この回答では補足欄の記入が必要です</div></div>`;
+  }
+  return caseNav(c, "activity") + `<div class="box warnbox">活動時に<b>把握・認識していたこと</b>を記録します。検証者の視点での評価は書きません。分からない場合は「不明」「確認できなかった」「記録なし」「該当なし」を区別して選んでください。</div>
+  ${ed ? "" : "<p class='muted'>閲覧のみ（入力できるのは自隊の隊員で、状態が「活動隊入力中」のときです）</p>"}
+  <form data-act="activity" data-cid="${c.case_id}">${fs(ed, html)}${ed ? `<div class="bar"><button class="btn">保存</button><a class="btn sub" href="#/case/${c.case_id}/info">次へ：情報把握</a></div>` : ""}</form>`;
+}
+
+function pageInfo(c) {
+  const ed = L.canEditActivity(ME, c), recs = {};
+  DB.info_record.filter(r => r.case_id === c.case_id).forEach(r => { recs[r.info_item_id] = r; });
+  const body = MASTERS.info_items.filter(it => L.applies(it, c.case_category_code)).map(it => {
+    const r = recs[it.info_item_id] || {}, i = it.info_item_id;
+    return `<div class="q"><div class="qt">${it.required ? '<span class="tag req">必須</span>' : ""}${h(it.item_name)} <span class="muted">${i}${it.hint ? "　" + h(it.hint) : ""}</span></div>
+    ${radios("aw_" + i, "L_AWARE", r.awareness_code)}
+    把握時刻 <input type="time" name="t_${i}" value="${h(r.acquired_time)}"> 情報源 <select name="src_${i}">${options("L_SOURCE", r.source_code)}</select>
+    方針への反映 <select name="ref_${i}">${options("L_REFLECT", r.reflection_code)}</select>
+    <textarea name="note_${i}" placeholder="内容・反映の仕方・確認できなかった理由">${h(r.note_text)}</textarea></div>`;
+  }).join("");
+  return caseNav(c, "info") + `<p class="muted">情報の種類ごとに、把握していたか・いつ・誰から・方針に反映したかを記録します。時刻が分からなければ空欄でかまいません。</p>
+  <form data-act="info" data-cid="${c.case_id}">${fs(ed, body)}${ed ? `<div class="bar"><button class="btn">保存</button><a class="btn sub" href="#/case/${c.case_id}/events">次へ：時系列</a></div>` : ""}</form>`;
+}
+
+function pageEvents(c) {
+  const ed = L.canEditActivity(ME, c), evs = L.sortEvents(DB.event.filter(e => e.case_id === c.case_id)), n = evs.length + (ed ? 5 : 0);
+  let rows = "";
+  for (let i = 0; i < n; i++) {
+    const e = evs[i] || {};
+    rows += `<tr><td class="muted">${e.event_id ? e.event_id.slice(-3) : ""}<input type="hidden" name="id_${i}" value="${h(e.event_id)}"></td>
+    <td><input type="number" name="day_${i}" value="${e.day_offset || ""}" min="0" max="3" style="width:56px" title="覚知日は空欄（0）、翌日は1"></td>
+    <td><input type="time" name="time_${i}" value="${h(e.event_time)}"></td><td><select name="cert_${i}">${options("L_TCERT", e.time_certainty_code)}</select></td>
+    <td><select name="type_${i}">${options("L_EVENT", e.event_type_code)}</select></td><td><input type="text" name="content_${i}" value="${h(e.content)}" style="width:100%"></td>
+    <td><input type="text" name="remarks_${i}" value="${h(e.remarks)}"></td>${ed ? `<td>${e.event_id ? `<input type="checkbox" name="del_${i}" value="1">` : ""}</td>` : ""}</tr>`;
+  }
+  return caseNav(c, "events") + `<p class="muted">1行1イベント。時刻が分からない場合は空欄のまま（確実性は自動で「不明」）。時刻不明のイベントは、直前に入力したイベントの後ろに並びます。区分を空にするか「削除」に印を付けると削除します。</p>
+  <form data-act="events" data-cid="${c.case_id}">${fs(ed, `<div style="overflow-x:auto"><table><tr><th>ID</th><th>経過日</th><th>時刻</th><th>確実性</th><th>イベント区分</th><th>内容</th><th>備考</th>${ed ? "<th>削除</th>" : ""}</tr>${rows}</table></div><input type="hidden" name="rows" value="${n}">`)}
+  <h3>所要時間（自動）</h3><table>${L.durations(evs).map(([l, v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("")}</table>
+  ${ed ? `<div class="bar"><button class="btn">保存（空き行は保存後に追加されます）</button><a class="btn sub" href="#/case/${c.case_id}/decisions">次へ：判断・活動</a></div>` : ""}</form>`;
+}
+
+function pageDecisions(c) {
+  const ed = L.canEditActivity(ME, c), decs = DB.decision.filter(d => d.case_id === c.case_id).sort((a, b) => a.decision_id.localeCompare(b.decision_id));
+  const evs = L.sortEvents(DB.event.filter(e => e.case_id === c.case_id)), n = decs.length + (ed ? 3 : 0);
+  let body = "";
+  for (let i = 0; i < n; i++) {
+    const d = decs[i] || {};
+    body += `<div class="item"><input type="hidden" name="id_${i}" value="${h(d.decision_id)}"><b>${d.decision_id || "新しい判断"}</b>
+    <div>対応イベント <select name="event_${i}"><option value=""></option>${evs.map(e => `<option value="${e.event_id}" ${d.event_id === e.event_id ? "selected" : ""}>${e.event_id.slice(-3)} ${e.event_time || "時刻不明"} ${h(lab("L_EVENT", e.event_type_code))}</option>`).join("")}</select>
+    判断時点 <input type="time" name="time_${i}" value="${h(d.decision_time)}"> 種別 <select name="type_${i}">${options("L_DECTYPE", d.decision_type_code)}</select></div>
+    <div>判断した内容 <input type="text" name="content_${i}" value="${h(d.decision_content)}" style="width:100%"></div>
+    <div>理由の区分 <select name="rcode_${i}">${options("L_REASON", d.reason_code)}</select> 具体的な理由 <input type="text" name="rtext_${i}" value="${h(d.reason_text)}" style="width:60%"></div>
+    <div>使った情報（情報ID可） <input type="text" name="info_${i}" value="${h(d.info_used)}"> 実施した活動 <input type="text" name="action_${i}" value="${h(d.action_taken)}">
+    結果 <select name="result_${i}">${options("L_RESULT", d.action_result_code)}</select></div>
+    <div>影響した制約・困難 <input type="text" name="cons_${i}" value="${h(d.constraints_text)}" style="width:70%">${ed && d.decision_id ? `　<label><input type="checkbox" name="del_${i}" value="1">削除</label>` : ""}</div></div>`;
+  }
+  return caseNav(c, "decisions") + `<p class="muted">主要な判断ごとに1件。判断した内容・理由・使った情報・実施した活動を、当時の認識で記録します。判断した内容を空にすると削除します。</p>
+  <form data-act="decisions" data-cid="${c.case_id}">${fs(ed, body + `<input type="hidden" name="rows" value="${n}">`)}${ed ? `<div class="bar"><button class="btn">保存</button><a class="btn sub" href="#/case/${c.case_id}/submit">次へ：提出前チェック</a></div>` : ""}</form>`;
+}
+
+function pageSubmit(c) {
+  const probs = L.activityProblems(DB, c), errors = probs.filter(p => p[3] === "error"), ed = L.canEditActivity(ME, c);
+  return caseNav(c, "submit") + (probs.length ? `<div class="box ${errors.length ? "err" : "warnbox"}"><b>${errors.length} 件の未入力${probs.length > errors.length ? `、${probs.length - errors.length} 件の確認事項` : ""}があります</b><ul>${probs.map(p => `<li class="${p[3] === "error" ? "err" : "warn"}"><a href="#/case/${c.case_id}/${p[0]}">${h(p[2])}</a></li>`).join("")}</ul></div>` : "<div class='box ok'>未入力の項目はありません。</div>")
+    + (ed ? `<form data-act="submit" data-cid="${c.case_id}"><p>提出すると、差戻しがない限り編集できなくなります。</p><button class="btn" ${errors.length ? "disabled" : ""}>提出する</button></form>` : "");
+}
+
+function pageAssign() {
+  const reviewers = USERS.filter(u => u.roles.includes("REVIEWER"));
+  const waiting = DB.case_record.filter(c => c.progress_code === "S2");
+  const sel = (name, c, blank) => `<select name="${name}"><option value="">${blank}</option>${reviewers.map(r => `<option value="${r.user_id}" ${r.unit_id === c.crew_unit_id ? "disabled" : ""}>${r.user_id}（${UNITS[r.unit_id]}）</option>`).join("")}</select>`;
+  return `<h1>検証担当の割当</h1><p class="muted">活動隊と同じ所属の検証者は割り当てられません。第二検証者（二重評価）は対象症例のみ指名します。</p>
+  ${waiting.map(c => `<form data-act="assign" data-cid="${c.case_id}" class="item"><b><a href="#/case/${c.case_id}/view">${c.case_id}</a></b> ${h(lab("L_CASECAT", c.case_category_code))}（活動隊：${UNITS[c.crew_unit_id]}）<br>
+  第一検証者 ${sel("r1", c, "")} 第二検証者 ${sel("r2", c, "指名しない")} <button class="btn">割り当てる</button></form>`).join("") || "<p class='muted'>割当を待っている症例はありません。</p>"}`;
+}
+
+function pageReview(c) {
+  const a = L.assignments(DB, c.case_id), ss = sessions(c.case_id), sess = ss.FIRST;
+  if (!sess) return caseNav(c, "review") + "<p class='muted'>まだ検証担当が割り当てられていません。</p>";
+  const mine = a.REVIEWER1 === ME.user_id;
+  if (!mine && !ME.roles.includes("SUPERVISOR")) return caseNav(c, "review") + "<p class='muted'>この症例の一次検証の担当ではありません。</p>";
+  const ed = mine && c.progress_code === "S3" && ["DRAFT", "SUBMIT"].includes(sess.status_code);
+  const revs = revsOf(sess.review_session_id), chks = {};
+  DB.review_check.filter(r => r.review_session_id === sess.review_session_id).forEach(r => { chks[r.checkpoint_id] = r; });
+  const sec = ss.SECOND, second = sec && ["SUBMIT", "FIX"].includes(sec.status_code) && ["SUBMIT", "FIX"].includes(sess.status_code) ? revsOf(sec.review_session_id) : {};
+  const items = L.reviewItems(c).map(x => {
+    const r = revs[x.review_item_id] || {}, s2 = second[x.review_item_id], v = x.review_item_id;
+    return `<div class="item ${["C", "D"].includes(r.rating_code) ? "cd" : ""}" data-vid="${v}"><b>${v} ${h(x.item_name)}</b><div class="muted">${h(x.criteria)}</div>
+    <details><summary class="muted">C・Dの目安</summary><div>C：${h(x.anchor_c)}</div><div>D：${h(x.anchor_d)}</div></details><div class="muted">② 確認観点</div>
+    ${x.checkpoints.map(cp => { const k = chks[cp.checkpoint_id] || {}; return `<div class="cp"><div>${h(cp.checkpoint_text)} <span class="muted">${cp.checkpoint_id}（${h(cp.related_records)}）</span></div>${radios("cp_" + cp.checkpoint_id, "L_CHECK", k.answer_code)}<input type="text" name="cpm_${cp.checkpoint_id}" value="${h(k.memo)}" placeholder="メモ（満たさない・一部・資料不足は必須。記録IDを付ける）" style="width:100%"></div>`; }).join("")}
+    <div style="margin-top:8px">参考評価：<span class="ref">${REF_LABEL[r.reference_rating] || ""}</span>　③ 評価区分 <span class="opts" style="display:inline-flex">${["A", "B", "C", "D", "E"].map(g => `<label><input type="radio" name="g_${v}" value="${g}" ${r.rating_code === g ? "checked" : ""}>${g}</label>`).join("")}</span>
+    ${s2 ? `<span class="pill">第二評価 ${s2.rating_at_submit}／${L.agreement(r.rating_at_submit, s2.rating_at_submit)}${s2.discussion_code ? "／" + { SAME: "一致", KEEP: "協議し維持", CHG: "協議し変更" }[s2.discussion_code] : ""}</span>` : ""}</div>
+    <textarea name="div_${v}" placeholder="参考評価と異なる区分を選んだ理由">${h(r.divergence_reason)}</textarea>
+    <textarea name="rat_${v}" placeholder="評価根拠：事実（記録ID）→ 比べた基準 → 判断">${h(r.rationale)}</textarea>
+    <textarea name="imp_${v}" placeholder="改善事項（C・Dは必須）：何がどうなればよいか">${h(r.improvement_item)}</textarea>
+    参照した記録ID <input type="text" name="refrec_${v}" value="${h(r.referenced_records)}"> 評価視点 <select name="view_${v}">${options("L_VIEW", r.viewpoint_code)}</select>
+    <label><input type="checkbox" name="good_${v}" value="Y" ${r.good_practice_code === "Y" ? "checked" : ""}>良好事例として共有</label></div>`;
+  }).join("");
+  const probs = ed ? L.reviewProblems(DB, c, sess, true) : [];
+  return caseNav(c, "review") + `<p class="muted">当時把握できていた情報を基準に評価します（結果から評価しない）。① 当時情報の要約 → ② 確認観点 → ③ 評価区分 の順に入力。評価基準の版 ${sess.criteria_version_id}／状態：${{ DRAFT: "入力中", SUBMIT: "提出済（協議中）", FIX: "確定" }[sess.status_code]}</p>
+  ${sec ? `<p class="muted">この症例は二重評価の対象です。${Object.keys(second).length ? "第二評価が提出されています（各項目に表示）。" : "両者の提出後に第二評価が表示されます。"}</p>` : ""}
+  <div class="grid2"><div class="pane">${recordHTML(caseDoc(c), true)}</div><div><form data-act="review" data-cid="${c.case_id}">
+  ${fs(ed, `<h3>① 当時把握していた情報の要約 <span class="tag req">必須</span></h3><textarea name="situation_summary" style="min-height:80px" placeholder="活動隊が各時点で何を知っていたかを2〜3行で。記録IDを付ける">${h(sess.situation_summary)}</textarea>${items}`)}
+  ${ed ? `<div class="bar"><button class="btn sub" name="action" value="save">保存</button>${sess.status_code === "DRAFT" ? '<button class="btn" name="action" value="submit">提出（協議前の評価を保存）</button>' : '<button class="btn" name="action" value="fix">一次検証を確定</button>'}</div>
+  <details class="box"><summary>活動隊に差し戻す（記録の補足が必要な場合）</summary><input type="text" name="return_reason" style="width:100%" placeholder="差戻しの理由（必須）"><button class="btn danger" name="action" value="return">差し戻す</button></details>
+  ${probs.length ? `<div class="box warnbox"><b>確定までに必要な入力：${probs.length}件</b><ul>${probs.slice(0, 15).map(p => `<li>${h(p[1])}</li>`).join("")}</ul></div>` : ""}` : ""}</form></div></div>`;
+}
+
+function pageReview2(c) {
+  const a = L.assignments(DB, c.case_id), ss = sessions(c.case_id), sess = ss.SECOND;
+  if (!sess) return caseNav(c, "review2") + "<p class='muted'>この症例は二重評価の対象ではありません。</p>";
+  const mine = a.REVIEWER2 === ME.user_id;
+  if (!mine && !ME.roles.includes("SUPERVISOR")) return caseNav(c, "review2") + "<p class='muted'>この症例の二重評価の担当ではありません。</p>";
+  const ed = mine && c.progress_code === "S3", draft = sess.status_code === "DRAFT", first = ss.FIRST;
+  const both = ["SUBMIT", "FIX"].includes(sess.status_code) && ["SUBMIT", "FIX"].includes(first.status_code);
+  const revs = revsOf(sess.review_session_id), firsts = both ? revsOf(first.review_session_id) : {};
+  const items = L.reviewItems(c).map(x => {
+    const v = x.review_item_id, r = revs[v] || {}, f1 = firsts[v];
+    let cmp = "";
+    if (both) {
+      const ag = L.agreement(f1 && f1.rating_at_submit, r.rating_at_submit);
+      cmp = `<div>第一評価（協議前）<b>${f1 ? f1.rating_at_submit : ""}</b>（現在 ${f1 ? f1.rating_code : ""}）／第二評価 <b>${r.rating_at_submit || ""}</b>／<span class="${ag === "完全一致" ? "ok" : "warn"}">${ag || ""}</span></div>
+      ${f1 && f1.rationale ? `<div class="muted">第一の根拠：${h(f1.rationale)}</div>` : ""}
+      ${ag && ag !== "完全一致" ? `協議結果 <select name="disc_${v}" ${ed ? "" : "disabled"}><option value=""></option><option value="KEEP" ${r.discussion_code === "KEEP" ? "selected" : ""}>協議し第一評価を維持</option><option value="CHG" ${r.discussion_code === "CHG" ? "selected" : ""}>協議し第一評価を変更</option></select>` : `<input type="hidden" name="disc_${v}" value="${ag ? "SAME" : ""}">`}`;
+    }
+    const dis = ed && draft ? "" : "disabled";
+    return `<div class="item"><b>${v} ${h(x.item_name)}</b><div class="muted">${h(x.criteria)}</div><details><summary class="muted">C・Dの目安</summary><div>C：${h(x.anchor_c)}</div><div>D：${h(x.anchor_d)}</div></details>
+    <span class="opts" style="display:inline-flex">${["A", "B", "C", "D", "E"].map(g => `<label><input type="radio" name="g_${v}" value="${g}" ${r.rating_code === g ? "checked" : ""} ${dis}>${g}</label>`).join("")}</span>
+    <textarea name="rat_${v}" placeholder="根拠の要点" ${dis}>${h(r.rationale)}</textarea>${cmp}</div>`;
+  }).join("");
+  return caseNav(c, "review2") + `<p class="muted">第一検証者の評価は、あなたの評価を提出するまで表示されません。一致率は協議前の評価で計算します。</p>
+  <div class="grid2"><div class="pane">${recordHTML(caseDoc(c), true)}</div><div><form data-act="review2" data-cid="${c.case_id}">${items}
+  ${ed ? `<div class="bar">${draft ? '<button class="btn sub" name="action" value="save">保存</button><button class="btn" name="action" value="submit">提出</button>' : both ? '<button class="btn" name="action" value="discuss">協議結果を保存</button>' : "<span class='muted'>第一検証者の提出を待っています</span>"}</div>` : ""}</form></div></div>`;
+}
+
+function pageUpper(c) {
+  if (!ME.roles.includes("SUPERVISOR")) return caseNav(c, "upper") + "<p class='muted'>権限がありません。</p>";
+  const first = sessions(c.case_id).FIRST;
+  if (!first) return caseNav(c, "upper") + "<p class='muted'>一次検証がまだありません。</p>";
+  const ed = ["S5", "S6"].includes(c.progress_code), items = {}; L.reviewItems(c).forEach(x => { items[x.review_item_id] = x; });
+  const cd = DB.review.filter(r => r.review_session_id === first.review_session_id && ["C", "D"].includes(r.rating_code)).sort((a, b) => a.review_item_id.localeCompare(b.review_item_id));
+  const causes = DB.cause.filter(x => x.case_id === c.case_id), imps = DB.improvement.filter(x => x.case_id === c.case_id);
+  const cdHtml = cd.map(r => `<div class="item cd"><b>${r.review_item_id} ${h((items[r.review_item_id] || {}).item_name)}：評価 ${r.rating_code}</b><div>根拠：${h(r.rationale)}</div><div>改善事項：${h(r.improvement_item)}</div>
+    ${causes.filter(x => x.review_item_id === r.review_item_id).map(x => `<div class="box">${x.cause_id}：${h(lab("L_CAUSE", x.cause_category_code))}・${h(lab("L_LEVEL", x.factor_level_code))}／${h(x.cause_detail)}（確実性：${h(lab("L_CERT", x.certainty_code))}）</div>`).join("") || "<div class='err'>原因分析が未登録です</div>"}
+    ${ed ? `<details><summary>原因を追加</summary><form data-act="addCause" data-cid="${c.case_id}" data-vid="${r.review_item_id}">原因分類 <select name="cause_category_code">${options("L_CAUSE")}</select> 要因レベル <select name="factor_level_code">${options("L_LEVEL")}</select> 確実性 <select name="certainty_code">${options("L_CERT")}</select><textarea name="cause_detail" placeholder="原因の詳細"></textarea><button class="btn">追加</button></form></details>` : ""}</div>`).join("") || "<p class='muted'>C・D評価の項目はありません。</p>";
+  const impRows = imps.map(p => `<tr><td>${p.improvement_id}</td><td>${p.cause_id.slice(-3)}</td><td>${h(lab("L_IMPCAT", p.improvement_category_code))}<br>${h(p.improvement_content)}</td>
+    <td>${h(p.department_text)}<br><span class="${p.due_date && p.due_date < today() && !["DONE", "STOP", "NN"].includes(p.status_code) ? "err" : ""}">${h(p.due_date)}</span></td><td>${h(p.effect_check_method)}${p.effect_check_due ? `（${p.effect_check_due}）` : ""}</td>
+    <td>${ed ? `<form data-act="updImp" data-cid="${c.case_id}" data-pid="${p.improvement_id}"><select name="status_code">${options("L_STATUS", p.status_code, false)}</select> 実施日 <input type="date" name="done_date" value="${h(p.done_date)}"><br>
+    効果 <select name="effect_result_code">${options("L_EFFECT", p.effect_result_code)}</select> 再発 <select name="recurrence_code">${options("L_RECUR", p.recurrence_code)}</select> <button class="btn sub">更新</button></form>` : `${h(lab("L_STATUS", p.status_code))}／${h(lab("L_EFFECT", p.effect_result_code))}／${h(lab("L_RECUR", p.recurrence_code))}`}</td></tr>`).join("") || "<tr><td colspan='6' class='muted'>改善策はまだありません</td></tr>";
+  return caseNav(c, "upper") + `<p class="muted">C・D評価の項目ごとに原因を分析し、改善策・担当・期限・効果確認まで記録します。「個人の知識・技術」に分類する前に、同じ状況で別の隊員も同じことをした可能性を検討してください。</p>
+  ${ed ? "" : "<p class='muted'>閲覧のみ（入力できるのは状態が「上位検証中」「改善策実施中」のときです）</p>"}
+  <h2>C・D評価の項目と原因</h2>${cdHtml}<h2>改善策</h2><table><tr><th>ID</th><th>原因</th><th>区分・内容</th><th>担当・期限</th><th>効果確認方法</th><th>状況・効果・再発</th></tr>${impRows}</table>
+  ${ed && causes.length ? `<details class="box"><summary>改善策を追加</summary><form data-act="addImp" data-cid="${c.case_id}">関連する原因 <select name="cause_id">${causes.map(x => `<option value="${x.cause_id}">${x.cause_id}（${x.review_item_id}）</option>`).join("")}</select>
+  改善区分 <select name="improvement_category_code">${options("L_IMPCAT")}</select><textarea name="improvement_content" placeholder="改善内容"></textarea>
+  担当部署 <input type="text" name="department_text"> 実施期限 <input type="date" name="due_date"><br>効果確認方法 <input type="text" name="effect_check_method" style="width:60%"> 確認時期 <input type="date" name="effect_check_due"> <button class="btn">追加</button></form></details>` : ""}
+  ${ed ? `<form data-act="advance" data-cid="${c.case_id}" class="bar">${c.progress_code === "S5" ? '<button class="btn" name="action" value="to_s6">改善策の決定を終える（改善策実施中へ）</button>' : '<button class="btn" name="action" value="to_s7">完了にする（全改善策の効果確認済み）</button>'}</form>` : ""}`;
+}
+
+function pageStats() {
+  const sup = ME.roles.includes("SUPERVISOR"), cnt = (arr, f) => { const o = {}; arr.forEach(x => { const k = f(x); o[k] = (o[k] || 0) + 1; }); return o; };
+  const table = (head, rows) => `<table><tr>${head.map(x => `<th>${x}</th>`).join("")}</tr>${rows.join("") || `<tr><td colspan="${head.length}" class="muted">データはまだありません</td></tr>`}</table>`;
+  let html = "<h1>集計・分析</h1>";
+  if (sup) {
+    const fixedFirst = DB.review_session.filter(s => s.session_role === "FIRST" && s.status_code === "FIX").map(s => s.review_session_id);
+    const revs = DB.review.filter(r => fixedFirst.includes(r.review_session_id)), names = {}; MASTERS.review_items.forEach(x => { names[x.review_item_id] = x.item_name; });
+    const byItem = {}; revs.forEach(r => { const o = byItem[r.review_item_id] = byItem[r.review_item_id] || { A: 0, B: 0, C: 0, D: 0, E: 0, good: 0, div: 0 }; if (r.rating_code) o[r.rating_code]++; if (r.good_practice_code === "Y") o.good++; if (r.divergence_reason) o.div++; });
+    const agree = {};
+    for (const f of DB.review_session.filter(s => s.session_role === "FIRST")) {
+      const s2 = DB.review_session.find(s => s.case_id === f.case_id && s.session_role === "SECOND"); if (!s2) continue;
+      const r1 = revsOf(f.review_session_id);
+      for (const r of DB.review.filter(x => x.review_session_id === s2.review_session_id)) {
+        const ag = L.agreement((r1[r.review_item_id] || {}).rating_at_submit, r.rating_at_submit); if (!ag) continue;
+        const o = agree[r.review_item_id] = agree[r.review_item_id] || { n: 0, exact: 0, within1: 0, chg: 0 };
+        o.n++; if (ag === "完全一致") o.exact++; if (["完全一致", "1段階差"].includes(ag)) o.within1++; if (r.discussion_code === "CHG") o.chg++;
+      }
+    }
+    const tot = Object.values(agree).reduce((a, o) => ({ n: a.n + o.n, exact: a.exact + o.exact, within1: a.within1 + o.within1, chg: a.chg + o.chg }), { n: 0, exact: 0, within1: 0, chg: 0 });
+    const pct = (a, b) => b ? Math.round(100 * a / b) + "%" : "";
+    const causeC = {}; DB.cause.forEach(x => { const o = causeC[x.cause_category_code] = causeC[x.cause_category_code] || { n: 0, cases: new Set() }; o.n++; o.cases.add(x.case_id); });
+    const impC = {}; DB.improvement.forEach(p => { const o = impC[p.improvement_category_code] = impC[p.improvement_category_code] || { n: 0, done: 0, over: 0, recur: 0 }; o.n++; if (p.status_code === "DONE") o.done++; if (p.due_date && p.due_date < today() && !["DONE", "STOP", "NN"].includes(p.status_code)) o.over++; if (p.recurrence_code === "YES") o.recur++; });
+    html += `<p class="muted">確定した一次検証のみを集計します。検証者別の分布は順位付けには使いません。</p><h2>症例区分別・状態別の件数</h2>
+    ${table(["症例区分", "件数"], Object.entries(cnt(DB.case_record, c => c.case_category_code)).map(([k, v]) => `<tr><td>${h(lab("L_CASECAT", k))}</td><td>${v}</td></tr>`))}
+    ${table(["状態", "件数"], Object.entries(cnt(DB.case_record, c => c.progress_code)).sort().map(([k, v]) => `<tr><td>${PROGRESS[k]}</td><td>${v}</td></tr>`))}
+    <h2>検証項目別の評価区分（C+D＝同種の改善課題が出た症例数）</h2>
+    ${table(["項目", "A", "B", "C", "D", "E", "C+D", "良好事例", "参考評価と相違"], Object.keys(byItem).sort().map(k => { const o = byItem[k]; return `<tr><td>${k} ${h(names[k])}</td><td>${o.A}</td><td>${o.B}</td><td>${o.C}</td><td>${o.D}</td><td>${o.E}</td><td class="${o.C + o.D >= 2 ? "err" : ""}">${o.C + o.D}</td><td>${o.good}</td><td>${o.div}</td></tr>`; }))}
+    <h2>二重評価の一致状況（協議前の評価）</h2>
+    ${table(["項目", "評価数", "完全一致", "完全一致率", "1段階以内", "協議で変更"], Object.keys(agree).sort().map(k => { const o = agree[k]; return `<tr><td>${k} ${h(names[k])}</td><td>${o.n}</td><td>${o.exact}</td><td>${pct(o.exact, o.n)}</td><td>${pct(o.within1, o.n)}</td><td>${o.chg}</td></tr>`; }).concat(tot.n ? [`<tr><th>全項目</th><th>${tot.n}</th><th>${tot.exact}</th><th>${pct(tot.exact, tot.n)}</th><th>${pct(tot.within1, tot.n)}</th><th>${tot.chg}</th></tr>`] : []))}
+    <h2>原因分類</h2>${table(["原因分類", "件数", "症例数"], Object.entries(causeC).map(([k, o]) => `<tr><td>${h(lab("L_CAUSE", k))}</td><td>${o.n}</td><td>${o.cases.size}</td></tr>`))}
+    <h2>改善策</h2>${table(["改善区分", "件数", "実施済", "期限超過", "再発あり"], Object.entries(impC).map(([k, o]) => `<tr><td>${h(lab("L_IMPCAT", k))}</td><td>${o.n}</td><td>${o.done}</td><td class="${o.over ? "err" : ""}">${o.over}</td><td>${o.recur}</td></tr>`))}`;
+  }
+  const mineIds = DB.review_session.filter(s => s.reviewer_id === ME.user_id).map(s => s.review_session_id);
+  const mine = cnt(DB.review.filter(r => mineIds.includes(r.review_session_id) && r.rating_code), r => r.rating_code);
+  return html + `<h2>あなたの評価分布（本人のみ表示）</h2>${table(Object.keys(mine).sort().length ? Object.keys(mine).sort() : ["評価"], Object.keys(mine).length ? [`<tr>${Object.keys(mine).sort().map(k => `<td>${mine[k]}</td>`).join("")}</tr>`] : [])}`;
+}
+
+const EXPORTS = { case_record: "D_CASE", answer: "D_ANSWER", self_evaluation: "D_SELF", info_record: "D_INFO", event: "D_EVENT", decision: "D_DECISION",
+  review_session: "D_REVIEW_SESSION", review: "D_REVIEW", review_check: "D_CHECK", cause: "D_CAUSE", improvement: "D_IMPROVE" };
+function pageExport() {
+  return `<h1>CSV出力</h1><p class="muted">テーブルごとのCSV（UTF-8・BOM付き）。1行目は列ID（本番のデータベースと同じ）。出力は操作履歴に残ります。</p>
+  <ul>${Object.entries(EXPORTS).map(([t, n]) => `<li><a href="#" data-click="csv" data-table="${t}">${t}.csv</a> <span class="muted">${n}</span></li>`).join("")}</ul>`;
+}
+function pageAudit() {
+  const rows = DB.audit_log.slice(-300).reverse();
+  return `<h1>操作履歴（新しい順・300件）</h1><div style="overflow-x:auto"><table><tr><th>日時</th><th>利用者</th><th>操作</th><th>対象</th><th>症例</th><th>内容</th></tr>
+  ${rows.map(r => `<tr><td>${h(r.occurred_at.slice(5))}</td><td>${h(r.user_id)}</td><td>${h(r.action)}</td><td>${h(r.target_table)} ${h(r.target_key)}</td><td>${h(r.case_id)}</td><td class="muted">${h(r.detail)}${r.before_data ? "<br>前：" + h(r.before_data.slice(0, 120)) : ""}${r.after_data ? "<br>後：" + h(r.after_data.slice(0, 120)) : ""}</td></tr>`).join("")}</table></div>`;
+}
+function pageAdmin() {
+  return `<h1>管理（デモ版は閲覧のみ）</h1><p class="muted">システム管理者は症例の中身を見られません。マスタ編集画面と利用者登録画面は試験運用版で作ります。</p>
+  <h2>利用者</h2><table><tr><th>利用者ID</th><th>所属</th><th>役割</th></tr>${USERS.map(u => `<tr><td>${u.user_id}</td><td>${UNITS[u.unit_id]}</td><td>${u.roles.map(r => ROLES[r]).join(" ")}</td></tr>`).join("")}</table>
+  <h2>マスタ</h2><p>質問の版 ${MASTERS.versions.QUESTION}（${MASTERS.questions.length}問）、評価基準の版 ${MASTERS.versions.CRITERIA}（検証項目 ${MASTERS.review_items.length}・確認観点 ${MASTERS.review_items.reduce((a, x) => a + x.checkpoints.length, 0)}）、選択肢の版 ${MASTERS.versions.CHOICE}</p>`;
+}
+function pageBackup() {
+  return `<h1>データ（このブラウザの中）</h1>
+  <p>入力したデータは、この端末のブラウザの中だけに保存されます。外部へは送信しません。他の端末とは共有されません。ブラウザのデータを消すと、入力内容も消えます。</p>
+  <h2>バックアップ</h2><p><button class="btn" type="button" data-click="backup">バックアップを書き出す（JSON）</button></p>
+  <p>読み込む：<input type="file" accept=".json,application/json" data-change="restore"> <span class="muted">（いまのデータは置き換わります）</span></p>
+  <h2>最初の状態に戻す</h2><p><button class="btn danger" type="button" data-click="reset">デモデータを初期化する</button> <span class="muted">架空症例 2026-0001 だけの状態に戻ります。</span></p>
+  <p class="muted">版：${h(BUILD.version)}（開発リポジトリ ${h(BUILD.commit)}、${h(BUILD.date)} 作成）／症例 ${DB.case_record.length} 件／操作履歴 ${DB.audit_log.length} 件</p>`;
+}
+
+// ------------------------------------------------------------ 保存処理（Flask版 app.py と同じ規則）
+const H = {
+  login(f, d) { const u = USERS.find(x => x.user_id === d.get("user_id")); if (!u) return flash("利用者を選んでください"); setMe(u); audit("LOGIN", null, null, null, null, null, "デモ用簡易ログイン"); save(); go("#/"); },
+  filter(f, d) { go(`#/cases?cat=${d.get("cat") || ""}&prog=${d.get("prog") || ""}`); },
+  caseNew(f, d) {
+    if (!ME.roles.includes("CREW")) return;
+    const need = ["occurrence_month", "case_category_code", "age_group_code", "etiology_code", "review_target_code"];
+    if (need.some(k => !d.get(k))) return flash("必須項目（*）をすべて選んでください");
+    const year = parseInt(d.get("fiscal_year"), 10) || new Date().getFullYear();
+    let n = DB.case_record.filter(c => c.fiscal_year === year).length + 1, cid;
+    do { cid = `${year}-${String(n++).padStart(4, "0")}`; } while (getCase(cid));
+    const row = { case_id: cid, fiscal_year: year, occurrence_month: d.get("occurrence_month"), case_category_code: d.get("case_category_code"), age_group_code: d.get("age_group_code"),
+      sex_code: nz(d.get("sex_code")), etiology_code: d.get("etiology_code"), review_target_code: d.get("review_target_code"), crew_unit_id: ME.unit_id, progress_code: "S1",
+      question_version_id: MASTERS.versions.QUESTION, criteria_version_id: null, registered_at: today(), registered_by: ME.user_id, submitted_at: null };
+    DB.case_record.push(row); audit("CREATE", "case_record", cid, cid, null, row); save();
+    flash(`症例 ${cid} を登録しました。続けて活動記録を入力してください。`); go(`#/case/${cid}/activity`);
+  },
+  activity(f, d, act, c) {
+    if (!L.canEditActivity(ME, c)) return;
+    const codes = {}; MASTERS.questions.forEach(q => { codes[q.question_id] = nz(d.get("q_" + q.question_id)); });
+    const vis = L.visibleQuestions(c.case_category_code, codes);
+    for (const q of MASTERS.questions) {
+      if (!L.applies(q, c.case_category_code)) continue;
+      const t = q.record_category === "自己評価" ? "self_evaluation" : "answer", code = codes[q.question_id], note = nz(d.get("n_" + q.question_id));
+      const old = DB[t].find(r => r.case_id === c.case_id && r.question_id === q.question_id);
+      if (!old && !code && !note) continue;
+      if (old && old.answer_code === code && old.note_text === note) continue;
+      const before = old ? { answer_code: old.answer_code, note_text: old.note_text } : null;
+      if (old) Object.assign(old, { answer_code: code, note_text: note, is_applicable: vis[q.question_id] });
+      else DB[t].push({ case_id: c.case_id, question_id: q.question_id, question_version_id: c.question_version_id, answer_code: code, note_text: note, is_applicable: vis[q.question_id] });
+      audit("UPDATE", t, `${c.case_id}-${q.question_id}`, c.case_id, before, { answer_code: code, note_text: note });
+    }
+    save(); flash("保存しました"); render();
+  },
+  info(f, d, act, c) {
+    if (!L.canEditActivity(ME, c)) return;
+    for (const it of MASTERS.info_items.filter(x => L.applies(x, c.case_category_code))) {
+      const i = it.info_item_id, v = { awareness_code: nz(d.get("aw_" + i)), acquired_time: nz(d.get("t_" + i)), source_code: nz(d.get("src_" + i)), reflection_code: nz(d.get("ref_" + i)), note_text: nz(d.get("note_" + i)) };
+      const old = DB.info_record.find(r => r.case_id === c.case_id && r.info_item_id === i);
+      if (!old && !Object.values(v).some(Boolean)) continue;
+      if (old && Object.keys(v).every(k => old[k] === v[k])) continue;
+      const before = old ? Object.fromEntries(Object.keys(v).map(k => [k, old[k]])) : null;
+      if (old) Object.assign(old, v); else DB.info_record.push({ case_id: c.case_id, info_item_id: i, item_version_id: c.question_version_id, ...v });
+      audit("UPDATE", "info_record", `${c.case_id}-${i}`, c.case_id, before, v);
+    }
+    save(); flash("保存しました"); render();
+  },
+  events(f, d, act, c) {
+    if (!L.canEditActivity(ME, c)) return;
+    const n = parseInt(d.get("rows"), 10) || 0;
+    for (let i = 0; i < n; i++) {
+      const eid = nz(d.get("id_" + i)), typ = nz(d.get("type_" + i)), ex = eid && DB.event.find(e => e.event_id === eid);
+      if (eid && (d.get("del_" + i) || !typ)) {
+        if (DB.decision.some(x => x.event_id === eid)) { flash(`${eid} は判断・活動の記録から参照されているため削除できません`); continue; }
+        DB.event = DB.event.filter(e => e.event_id !== eid); audit("DELETE", "event", eid, c.case_id, ex, null); continue;
+      }
+      if (!typ) continue;
+      const t = nz(d.get("time_" + i));
+      const v = { day_offset: parseInt(d.get("day_" + i), 10) || 0, event_time: t, time_certainty_code: nz(d.get("cert_" + i)) || (t ? "MEM" : "UNK"), event_type_code: typ, content: nz(d.get("content_" + i)), remarks: nz(d.get("remarks_" + i)) };
+      if (ex) { if (Object.keys(v).some(k => ex[k] !== v[k])) { const before = Object.fromEntries(Object.keys(v).map(k => [k, ex[k]])); Object.assign(ex, v); audit("UPDATE", "event", eid, c.case_id, before, v); } }
+      else {
+        const id = nextNo(DB.event.filter(e => e.case_id === c.case_id).map(e => e.event_id), `${c.case_id}-E`);
+        DB.event.push({ event_id: id, case_id: c.case_id, ...v, input_order: parseInt(id.slice(-2), 10), recorded_by: ME.user_id }); audit("CREATE", "event", id, c.case_id, null, v);
+      }
+    }
+    save(); flash("保存しました"); render();
+  },
+  decisions(f, d, act, c) {
+    if (!L.canEditActivity(ME, c)) return;
+    const n = parseInt(d.get("rows"), 10) || 0;
+    for (let i = 0; i < n; i++) {
+      const did = nz(d.get("id_" + i)), content = nz(d.get("content_" + i)), ex = did && DB.decision.find(x => x.decision_id === did);
+      if (did && (d.get("del_" + i) || !content)) { DB.decision = DB.decision.filter(x => x.decision_id !== did); audit("DELETE", "decision", did, c.case_id, ex, null); continue; }
+      if (!content) continue;
+      const v = { event_id: nz(d.get("event_" + i)), decision_time: nz(d.get("time_" + i)), decision_type_code: nz(d.get("type_" + i)), decision_content: content, reason_code: nz(d.get("rcode_" + i)),
+        reason_text: nz(d.get("rtext_" + i)), info_used: nz(d.get("info_" + i)), action_taken: nz(d.get("action_" + i)), action_result_code: nz(d.get("result_" + i)), constraints_text: nz(d.get("cons_" + i)) };
+      if (!v.reason_code && !v.reason_text) { flash(`${did || "新しい判断"}：判断理由（区分か具体的な理由）を入力してください。この行は保存していません`); continue; }
+      if (ex) { if (Object.keys(v).some(k => ex[k] !== v[k])) { const before = Object.fromEntries(Object.keys(v).map(k => [k, ex[k]])); Object.assign(ex, v); audit("UPDATE", "decision", did, c.case_id, before, v); } }
+      else { const id = nextNo(DB.decision.filter(x => x.case_id === c.case_id).map(x => x.decision_id), `${c.case_id}-D`); DB.decision.push({ decision_id: id, case_id: c.case_id, ...v }); audit("CREATE", "decision", id, c.case_id, null, v); }
+    }
+    save(); flash("保存しました"); render();
+  },
+  submit(f, d, act, c) {
+    if (!L.canEditActivity(ME, c)) return;
+    if (L.activityProblems(DB, c).some(p => p[3] === "error")) return flash("未入力の項目があるため提出できません");
+    c.submitted_at = today();
+    if (Object.keys(L.assignments(DB, c.case_id)).length) setProgress(c, "S3", "差戻し後の再提出（検証担当は割当済み）"); else setProgress(c, "S2", "活動隊が提出");
+    save(); flash("提出しました。以後は差戻しがない限り編集できません。"); go(`#/case/${c.case_id}/view`);
+  },
+  assign(f, d, act, c) {
+    if (!ME.roles.includes("SUPERVISOR") || c.progress_code !== "S2") return;
+    const r1 = d.get("r1"), r2 = nz(d.get("r2")), unit = id => (USERS.find(u => u.user_id === id) || {}).unit_id;
+    if (!r1) return flash("第一検証者を選んでください");
+    if (unit(r1) === c.crew_unit_id || (r2 && unit(r2) === c.crew_unit_id)) return flash("活動隊と同じ所属の検証者は割り当てられません（自隊の症例を検証しない）");
+    if (r2 && r2 === r1) return flash("第一検証者と第二検証者は別の人にしてください");
+    let sid = DB.review_session.reduce((m, s) => Math.max(m, s.review_session_id), 0);
+    [["REVIEWER1", r1, "FIRST"], ["REVIEWER2", r2, "SECOND"]].forEach(([role, uid, sr]) => {
+      if (!uid) return;
+      DB.case_assignment.push({ case_id: c.case_id, assignment_role: role, user_id: uid, assigned_by: ME.user_id });
+      DB.review_session.push({ review_session_id: ++sid, case_id: c.case_id, session_role: sr, reviewer_id: uid, criteria_version_id: MASTERS.versions.CRITERIA, situation_summary: null, status_code: "DRAFT", review_date: null });
+    });
+    c.criteria_version_id = MASTERS.versions.CRITERIA;
+    audit("ASSIGN", "case_assignment", c.case_id, c.case_id, null, { REVIEWER1: r1, REVIEWER2: r2 }); setProgress(c, "S3", "検証担当を割当");
+    save(); flash(`${c.case_id} の検証担当を割り当てました`); render();
+  },
+  review(f, d, act, c) {
+    const a = L.assignments(DB, c.case_id), ss = sessions(c.case_id), sess = ss.FIRST;
+    if (!(a.REVIEWER1 === ME.user_id && c.progress_code === "S3" && ["DRAFT", "SUBMIT"].includes(sess.status_code))) return;
+    if (act === "return") {
+      const reason = nz(d.get("return_reason")); if (!reason) return flash("差戻しの理由を入力してください");
+      c.submitted_at = null; setProgress(c, "S1", "差戻し：" + reason); save(); flash("活動隊に差し戻しました"); return go("#/");
+    }
+    saveReview(sess, c, d, true);
+    if (act === "submit") {
+      const probs = L.reviewProblems(DB, c, sess, true);
+      if (probs.length) { probs.slice(0, 12).forEach(p => flash(p[1])); flash("入力が不足しているため提出できません（入力内容は保存しました）"); save(); return render(); }
+      DB.review.filter(r => r.review_session_id === sess.review_session_id).forEach(r => { r.rating_at_submit = r.rating_code; });
+      sess.status_code = "SUBMIT"; audit("SUBMIT", "review_session", String(sess.review_session_id), c.case_id, null, null, "第一評価を提出（協議前の値を保存）"); flash("提出しました。協議前の評価を保存しました。");
+    } else if (act === "fix") {
+      const pend = pendingDiscussion(ss);
+      if (sess.status_code !== "SUBMIT") flash("先に提出してください");
+      else if (ss.SECOND && ss.SECOND.status_code !== "SUBMIT") flash("第二検証者の評価が提出されていないため確定できません");
+      else if (pend.length) flash("不一致の項目に協議結果が入力されていません：" + pend.join("、"));
+      else if (L.reviewProblems(DB, c, sess, true).length) flash("入力が不足しているため確定できません");
+      else {
+        Object.values(ss).forEach(s => { s.status_code = "FIX"; s.review_date = today(); });
+        setProgress(c, "S4", "一次検証確定");
+        const cd = DB.review.some(r => r.review_session_id === sess.review_session_id && ["C", "D"].includes(r.rating_code));
+        setProgress(c, cd ? "S5" : "S7", cd ? "C・Dあり：上位検証へ" : "C・Dなし：完了");
+        save(); flash("一次検証を確定しました"); return go(`#/case/${c.case_id}/view`);
+      }
+    } else flash("保存しました");
+    save(); render();
+  },
+  review2(f, d, act, c) {
+    const a = L.assignments(DB, c.case_id), ss = sessions(c.case_id), sess = ss.SECOND;
+    if (!(sess && a.REVIEWER2 === ME.user_id && c.progress_code === "S3")) return;
+    const both = ["SUBMIT", "FIX"].includes(sess.status_code) && ["SUBMIT", "FIX"].includes(ss.FIRST.status_code);
+    if (sess.status_code === "DRAFT") {
+      saveReview(sess, c, d, false);
+      if (act === "submit") {
+        const probs = L.reviewProblems(DB, c, sess, false);
+        if (probs.length) { probs.slice(0, 12).forEach(p => flash(p[1])); flash("未評価の項目があるため提出できません（入力内容は保存しました）"); save(); return render(); }
+        DB.review.filter(r => r.review_session_id === sess.review_session_id).forEach(r => { r.rating_at_submit = r.rating_code; });
+        sess.status_code = "SUBMIT"; audit("SUBMIT", "review_session", String(sess.review_session_id), c.case_id, null, null, "第二評価を提出"); flash("提出しました");
+      } else flash("保存しました");
+    } else if (both && act === "discuss") {
+      L.reviewItems(c).forEach(x => { const r = DB.review.find(y => y.review_session_id === sess.review_session_id && y.review_item_id === x.review_item_id); if (r) r.discussion_code = nz(d.get("disc_" + x.review_item_id)); });
+      audit("UPDATE", "review", String(sess.review_session_id), c.case_id, null, null, "協議結果を入力");
+      flash("協議結果を保存しました。第一評価を変更する場合は、第一検証者が一次検証画面で修正します。");
+    }
+    save(); render();
+  },
+  addCause(f, d, act, c) {
+    const need = ["cause_category_code", "factor_level_code", "cause_detail", "certainty_code"];
+    if (!need.every(k => nz(d.get(k)))) return flash("原因分類・要因レベル・原因の詳細・確実性はすべて必須です");
+    const id = nextNo(DB.cause.filter(x => x.case_id === c.case_id).map(x => x.cause_id), `${c.case_id}-C`), v = Object.fromEntries(need.map(k => [k, nz(d.get(k))]));
+    DB.cause.push({ cause_id: id, case_id: c.case_id, review_session_id: sessions(c.case_id).FIRST.review_session_id, review_item_id: f.dataset.vid, ...v });
+    audit("CREATE", "cause", id, c.case_id, null, v); save(); flash(`${id} を登録しました`); render();
+  },
+  addImp(f, d, act, c) {
+    const cat = d.get("improvement_category_code");
+    if (!nz(d.get("cause_id")) || !cat || !nz(d.get("improvement_content"))) return flash("関連する原因・改善区分・改善内容は必須です");
+    if (!["P09", "P10"].includes(cat) && !(nz(d.get("department_text")) && nz(d.get("due_date")))) return flash("担当部署と実施期限を入力してください（経過観察・改善措置不要を除く）");
+    const id = nextNo(DB.improvement.filter(x => x.case_id === c.case_id).map(x => x.improvement_id), `${c.case_id}-P`);
+    const v = { cause_id: d.get("cause_id"), improvement_category_code: cat, improvement_content: nz(d.get("improvement_content")), department_text: nz(d.get("department_text")), due_date: nz(d.get("due_date")),
+      status_code: "NS", done_date: null, effect_check_method: nz(d.get("effect_check_method")), effect_check_due: nz(d.get("effect_check_due")), effect_result_code: null, recurrence_code: null };
+    DB.improvement.push({ improvement_id: id, case_id: c.case_id, ...v }); audit("CREATE", "improvement", id, c.case_id, null, v); save(); flash(`${id} を登録しました`); render();
+  },
+  updImp(f, d, act, c) {
+    const p = DB.improvement.find(x => x.improvement_id === f.dataset.pid);
+    const v = { status_code: d.get("status_code") || "NS", done_date: nz(d.get("done_date")), effect_result_code: nz(d.get("effect_result_code")), recurrence_code: nz(d.get("recurrence_code")) };
+    if (v.status_code === "DONE" && !v.done_date) return flash("実施済にする場合は実施日を入力してください");
+    const before = Object.fromEntries(Object.keys(v).map(k => [k, p[k]])); Object.assign(p, v); audit("UPDATE", "improvement", p.improvement_id, c.case_id, before, v); save(); flash(`${p.improvement_id} を更新しました`); render();
+  },
+  advance(f, d, act, c) {
+    if (act === "to_s6") {
+      const first = sessions(c.case_id).FIRST;
+      const missing = DB.review.filter(r => r.review_session_id === first.review_session_id && ["C", "D"].includes(r.rating_code) && !DB.cause.some(x => x.review_session_id === first.review_session_id && x.review_item_id === r.review_item_id)).map(r => r.review_item_id);
+      if (missing.length) return flash("原因分析が未接続のC・D項目があります：" + missing.join("、"));
+      setProgress(c, "S6", "改善策を決定"); flash("改善策実施中にしました");
+    } else if (act === "to_s7") {
+      const rest = DB.improvement.filter(p => p.case_id === c.case_id && !(["STOP", "NN"].includes(p.status_code) || (p.status_code === "DONE" && p.effect_result_code && p.effect_result_code !== "PEND")));
+      if (rest.length) return flash("実施済・効果確認済みになっていない改善策があります：" + rest.map(p => p.improvement_id).join("、"));
+      setProgress(c, "S7", "全改善策の効果確認を終えた"); flash("完了にしました");
+    }
+    save(); render();
+  },
+};
+function saveReview(sess, c, d, first) {
+  const sid = sess.review_session_id;
+  if (first) { const s = nz(d.get("situation_summary")); if (s !== sess.situation_summary) { audit("UPDATE", "review_session", String(sid), c.case_id, { situation_summary: sess.situation_summary }, { situation_summary: s }); sess.situation_summary = s; } }
+  for (const x of L.reviewItems(c)) {
+    const v = x.review_item_id;
+    let val;
+    if (first) {
+      const ans = x.checkpoints.map(cp => {
+        const a = nz(d.get("cp_" + cp.checkpoint_id)), memo = nz(d.get("cpm_" + cp.checkpoint_id));
+        const k = DB.review_check.find(r => r.review_session_id === sid && r.checkpoint_id === cp.checkpoint_id);
+        if (k) Object.assign(k, { answer_code: a, memo }); else DB.review_check.push({ review_session_id: sid, checkpoint_id: cp.checkpoint_id, criteria_version_id: sess.criteria_version_id, answer_code: a, memo });
+        return a;
+      });
+      val = { rating_code: nz(d.get("g_" + v)), reference_rating: x.checkpoints.length ? L.referenceRating(ans) : null, divergence_reason: nz(d.get("div_" + v)), rationale: nz(d.get("rat_" + v)),
+        improvement_item: nz(d.get("imp_" + v)), referenced_records: nz(d.get("refrec_" + v)), viewpoint_code: nz(d.get("view_" + v)), good_practice_code: nz(d.get("good_" + v)) };
+    } else val = { rating_code: nz(d.get("g_" + v)), rationale: nz(d.get("rat_" + v)) };
+    const old = DB.review.find(r => r.review_session_id === sid && r.review_item_id === v);
+    if (old && Object.keys(val).every(k => old[k] === val[k])) continue;
+    const before = old ? Object.fromEntries(Object.keys(val).map(k => [k, old[k]])) : null;
+    if (old) Object.assign(old, val); else DB.review.push({ review_session_id: sid, review_item_id: v, criteria_version_id: sess.criteria_version_id, rating_at_submit: null, discussion_code: null, ...val });
+    if (sess.status_code !== "DRAFT" && before && before.rating_code !== val.rating_code) audit("RATING_CHANGE", "review", `${sid}-${v}`, c.case_id, { rating_code: before.rating_code }, { rating_code: val.rating_code }, "協議後の変更");
+    else audit("UPDATE", "review", `${sid}-${v}`, c.case_id, before, val);
+  }
+}
+function pendingDiscussion(ss) {
+  if (!ss.SECOND) return [];
+  const r1 = revsOf(ss.FIRST.review_session_id);
+  return DB.review.filter(r => r.review_session_id === ss.SECOND.review_session_id && !r.discussion_code && (() => { const a = L.agreement((r1[r.review_item_id] || {}).rating_at_submit, r.rating_at_submit); return a && a !== "完全一致"; })()).map(r => r.review_item_id);
+}
+
+// ------------------------------------------------------------ ボタン・ファイル
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function toCSV(rows) {
+  if (!rows.length) return "";
+  const cols = Object.keys(rows.reduce((o, r) => Object.assign(o, r), {})).filter(k => !k.startsWith("_"));
+  const q = v => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  return [cols.join(",")].concat(rows.map(r => cols.map(k => q(r[k])).join(","))).join("\r\n");
+}
+const CLICK = {
+  logout() { setMe(null); go("#/login"); },
+  print() { window.print(); },
+  csv(el) { const t = el.dataset.table; audit("EXPORT", t, null, null, null, null, `CSV ${DB[t].length}件`); save(); download(`${t}.csv`, "﻿" + toCSV(DB[t]), "text/csv"); },
+  backup() { download(`jigo-kensho-demo-backup-${today()}.json`, JSON.stringify({ app: "jigo-kensho-demo", build: BUILD, saved_at: now(), data: DB }, null, 1), "application/json"); },
+  reset() { if (!confirm("デモデータを初期化します。入力した内容はすべて消えます。よろしいですか？")) return; DB = clone(SAMPLE_DB); save(); flash("初期化しました"); render(); },
+};
+function restore(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const o = JSON.parse(r.result);
+      if (o.app !== "jigo-kensho-demo" || !o.data || !Array.isArray(o.data.case_record)) throw new Error("形式が違います");
+      DB = o.data; TABLES.forEach(t => { if (!DB[t]) DB[t] = []; }); save(); flash(`バックアップを読み込みました（症例 ${DB.case_record.length} 件）`);
+    } catch (e) { flash("読み込めませんでした：" + e.message); }
+    render();
+  };
+  r.readAsText(file);
+}
+
+// ------------------------------------------------------------ 画面の切り替え
+function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
+function parse() {
+  const [path, qs] = (location.hash.slice(1) || "/").split("?");
+  const q = {}; (qs || "").split("&").filter(Boolean).forEach(p => { const [k, v] = p.split("="); q[k] = decodeURIComponent(v || ""); });
+  return { parts: path.split("/").filter(Boolean), q };
+}
+function render() {
+  const { parts, q } = parse();
+  let body;
+  if (!ME) body = pageLogin();
+  else if (!parts.length) body = pageHome();
+  else if (parts[0] === "cases") body = pageCases(q);
+  else if (parts[0] === "new") body = ME.roles.includes("CREW") ? pageNew() : "<h1>この画面を開く権限がありません。</h1>";
+  else if (parts[0] === "assign") body = ME.roles.includes("SUPERVISOR") ? pageAssign() : "<h1>この画面を開く権限がありません。</h1>";
+  else if (parts[0] === "stats") body = ME.roles.some(r => ["SUPERVISOR", "REVIEWER"].includes(r)) ? pageStats() : "<h1>この画面を開く権限がありません。</h1>";
+  else if (parts[0] === "export") body = ME.roles.includes("SUPERVISOR") ? pageExport() : "<h1>この画面を開く権限がありません。</h1>";
+  else if (parts[0] === "audit") body = ME.roles.some(r => ["SUPERVISOR", "SYSADMIN"].includes(r)) ? pageAudit() : "<h1>この画面を開く権限がありません。</h1>";
+  else if (parts[0] === "admin") body = ME.roles.includes("SYSADMIN") ? pageAdmin() : "<h1>この画面を開く権限がありません。</h1>";
+  else if (parts[0] === "backup") body = pageBackup();
+  else if (parts[0] === "case") {
+    const c = getCase(parts[1]);
+    if (!c) body = "<h1>見つかりません。</h1>";
+    else if (!L.canView(DB, ME, c)) body = "<h1>この画面を開く権限がありません。</h1>";
+    else {
+      const P = { view: pageView, activity: pageActivity, info: pageInfo, events: pageEvents, decisions: pageDecisions, submit: pageSubmit, review: pageReview, review2: pageReview2, upper: pageUpper }[parts[2] || "view"];
+      body = P ? P(c) : "<h1>見つかりません。</h1>";
+      if (parts[2] === "view" || !parts[2]) { audit("VIEW", "case_record", c.case_id, c.case_id); save(); }
+    }
+  } else body = "<h1>見つかりません。</h1>";
+  document.getElementById("root").innerHTML = layout(body);
+  window.scrollTo(0, 0);
+  liveBranching(); liveReference();
+}
+
+// 質問の分岐（回答の変更に応じて表示・非表示）と参考評価の即時計算
+function liveBranching() {
+  const rows = [...document.querySelectorAll(".q[data-qid]")];
+  if (!rows.length) return;
+  const code = id => { const c = document.querySelector(`input[name="q_${id}"]:checked`); return c ? c.value : ""; };
+  const update = () => {
+    const vis = {};
+    rows.forEach(r => {
+      const p = r.dataset.cond; let ok = true;
+      if (p) ok = !!vis[p] && (r.dataset.show || "").split("|").includes(code(p));
+      vis[r.dataset.qid] = ok; r.classList.toggle("hidden", !ok);
+      const n = r.querySelector(".notehint"); if (n) n.hidden = !(r.dataset.note || "").split("|").includes(code(r.dataset.qid));
+    });
+  };
+  rows.forEach(r => r.addEventListener("change", update)); update();
+}
+function liveReference() {
+  document.querySelectorAll(".item[data-vid]").forEach(item => {
+    const out = item.querySelector(".ref"); if (!out) return;
+    const calc = () => {
+      const g = [...item.querySelectorAll(".cp")];
+      out.textContent = REF_LABEL[L.referenceRating(g.map(x => { const c = x.querySelector("input[type=radio]:checked"); return c ? c.value : ""; }))];
+    };
+    item.addEventListener("change", calc); calc();
+  });
+}
+
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target, fn = H[f.dataset.act]; if (!fn) return;
+  const d = new FormData(f), act = e.submitter ? e.submitter.value : null, c = f.dataset.cid ? getCase(f.dataset.cid) : null;
+  if (f.dataset.cid && (!c || !L.canView(DB, ME, c))) return;
+  const before = FLASH.length;
+  fn(f, d, act, c);
+  if (FLASH.length > before) render();
+});
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-click]"); if (!el) return;
+  e.preventDefault(); CLICK[el.dataset.click](el);
+});
+document.addEventListener("change", e => { if (e.target.dataset && e.target.dataset.change === "restore") restore(e.target); });
+window.addEventListener("hashchange", render);
+load(); render();
+
+</script>
+</body>
+</html>
